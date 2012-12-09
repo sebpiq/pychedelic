@@ -1,56 +1,66 @@
 import numpy as np
 import pylab
 import unittest
+import pandas as pnd
 
-from __init__ import SoundLabTestCase
-from algorithms import *
+from __init__ import PychedelicTestCase
+from pychedelic.algorithms import *
+from pychedelic.data_structures import Sound
 
 
-class Algorithms_Test(SoundLabTestCase):
+class Algorithms_Test(PychedelicTestCase):
 
     def maxima_test(self):
         x = [0, 0.5, 1, 1.5, 2, 2.5, 3]
         y = [1, 2, 1, 2, 5, 5, 3]
-        max_x, max_y = maxima(x, y)
-        self.assertEqual(max_y, [2, 5])
-        self.assertEqual(max_x, [0.5, 2])
+        result = maxima(pnd.Series(y, index=x))
+        self.assertEqual(result, [2, 5])
+        self.assertEqual(result.index, [0.5, 2])
 
         x = [0, 0.5, 1]
         y = [2, 0, -1]
-        max_x, max_y = maxima(x, y)
-        self.assertEqual(max_y, [2])
-        self.assertEqual(max_x, [0])
+        result = maxima(pnd.Series(y, index=x))
+        self.assertEqual(result, [2])
+        self.assertEqual(result.index, [0])
         x = [0, 0.5, 1]
         y = [-10, -2, -1]
-        max_x, max_y = maxima(x, y)
-        self.assertEqual(max_y, [-1])
-        self.assertEqual(max_x, [1])
+        result = maxima(pnd.Series(y, index=x))
+        self.assertEqual(result, [-1])
+        self.assertEqual(result.index, [1])
         y = [-10, -1, -1]
-        max_x, max_y = maxima(x, y)
-        self.assertEqual(max_y, [-1])
-        self.assertEqual(max_x, [0.5])
+        result = maxima(pnd.Series(y, index=x))
+        self.assertEqual(result, [-1])
+        self.assertEqual(result.index, [0.5])
         y = [10, 10, -1]
-        max_x, max_y = maxima(x, y)
-        self.assertEqual(max_y, [10])
-        self.assertEqual(max_x, [0])
+        result = maxima(pnd.Series(y, index=x))
+        self.assertEqual(result, [10])
+        self.assertEqual(result.index, [0])
 
         # testing take_edges
+        x = [0, 0.5, 1, 1.5, 2, 2.5, 3]
         y = [78, 5, 34, 33, 1, 4, 5]
-        max_x, max_y = maxima(x, y, take_edges=False)
-        self.assertEqual(max_y, [34])
-        self.assertEqual(max_x, [1])
+        result = maxima(pnd.Series(y, index=x), take_edges=False)
+        self.assertEqual(result, [34])
+        self.assertEqual(result.index, [1])
+
+        # testing with not ordered data
+        x = [0, 0.5, 1.5, 2, 2.5, 1, 3]
+        y = [78, 5, 33, 1, 4, 34, 5]
+        result = maxima(pnd.Series(y, index=x), take_edges=False)
+        self.assertEqual(result, [34])
+        self.assertEqual(result.index, [1])
 
     def minima_test(self):
         x = [0, 0.5, 1, 1.5, 2, 2.5, 3]
         y = [1, 1, 2, 2, 3, 5, 3]
 
-        min_x, min_y = minima(x, y)
-        self.assertEqual(min_y, [1, 3])
-        self.assertEqual(min_x, [0, 3])
+        result = minima(pnd.Series(y, index=x))
+        self.assertEqual(result, [1, 3])
+        self.assertEqual(result.index, [0, 3])
 
-        min_x, min_y = minima(x, y, take_edges=False)
-        self.assertEqual(min_y, [1])
-        self.assertEqual(min_x, [0])
+        result = minima(pnd.Series(y, index=x), take_edges=False)
+        self.assertEqual(result, [1])
+        self.assertEqual(result.index, [0])
 
     def goertzel_test(self):
         # generating test signals
@@ -72,13 +82,13 @@ class Algorithms_Test(SoundLabTestCase):
 
         # applying Goertzel on those signals
         freqs, results = goertzel(sine_wave, SAMPLE_RATE, (400, 500),  (900, 1100))
-        max_x, max_y = maxima(freqs, get_ft_amplitude_array(results))
-        self.assertItemsEqual([find_bin(440), find_bin(1020)], max_x)
+        result_maxs = maxima(pnd.Series(get_ft_amplitude_array(results), index=freqs), take_edges=False)
+        self.assertItemsEqual([find_bin(440), find_bin(1020)], result_maxs.index)
 
         # applying Goertzel on those signals
         freqs, results = goertzel(sine_wave2, SAMPLE_RATE, (800, 900),  (1400, 1600))
-        max_x, max_y = maxima(freqs, get_ft_amplitude_array(results))
-        self.assertItemsEqual([find_bin(880), find_bin(1500)], max_x)
+        result_maxs = maxima(pnd.Series(get_ft_amplitude_array(results), index=freqs), take_edges=False)
+        self.assertItemsEqual([find_bin(880), find_bin(1500)], result_maxs.index)
 
     def fft_test(self):
         # TODO
@@ -137,7 +147,6 @@ class Algorithms_Test(SoundLabTestCase):
         stretched = paulstretch(sig, SAMPLE_RATE, 2, onset_level=1.0)
         t_stretched = np.arange(0, stretched.size) * 1.0 / SAMPLE_RATE
 
-        from soundlab import Sound
         sound = Sound.from_file('loop0.wav')
         stretchd = paulstretch(sound.data[:,0], 44100, 2)
         Sound(data=np.array([stretchd]).transpose(), sample_rate=44100).to_file('loop0_s.wav')
@@ -150,6 +159,23 @@ class Algorithms_Test(SoundLabTestCase):
         pylab.title('Stretched signal')
         pylab.plot(t_stretched, stretched)
 
+        pylab.show()
+
+    def smooth_test(self):
+        t = np.linspace(0, 1, 44100)
+        orig_data = np.cos(2 * np.pi * t * 15)
+        noisy_data = orig_data + 0.5 * (np.random.random(len(t)) - 0.5)
+        noisy_data = pnd.Series(noisy_data, index=t)
+
+        pylab.subplot(2, 1, 1)
+        pylab.title('Noisy signal')
+        noisy_data.plot()
+        
+        smooth_data = smooth(noisy_data, window_size=50)
+
+        pylab.subplot(2, 1, 2)
+        pylab.title('Smooth signal')
+        smooth_data.plot()
         pylab.show()
 
     def loop_interpolate_test(self):

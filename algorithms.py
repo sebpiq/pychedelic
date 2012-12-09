@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import pandas as pnd
 
 
 def fft(samples, sample_rate):
@@ -102,26 +103,27 @@ def get_ft_amplitude_array(array):
     return np.absolute(array).astype(float)
 
 
-def maxima(x, y, take_edges=True):
+def maxima(dseries, take_edges=True):
     cond1 = lambda grad: grad > 0
     cond2 = lambda grad: grad < 0
-    return _extrema(x, y, cond1, cond2, take_edges=take_edges)
+    return _extrema(dseries, cond1, cond2, take_edges=take_edges)
 
 
-def minima(x, y, take_edges=True):
+def minima(dseries, take_edges=True):
     cond1 = lambda grad: grad < 0
     cond2 = lambda grad: grad > 0
-    return _extrema(x, y, cond1, cond2, take_edges=take_edges)
+    return _extrema(dseries, cond1, cond2, take_edges=take_edges)
 
 
-def _extrema(x, y, cond1, cond2, take_edges=True):
-    # Preparing data and factorized functions
-    gradients = np.diff(y, axis=0)
-    extrema_x = []
-    extrema_y = []
+def _extrema(dseries, cond1, cond2, take_edges=True):
+    # Preparing data and helper functions.
+    # We will collect indices of extrema in `extrema_ind`, and then
+    # apply this to `dseries`.
+    dseries = dseries.sort_index()
+    gradients = dseries.diff()[1:].values
+    extrema_ind = []
     def extremum_found(ind):
-        extrema_x.append(x[ind])
-        extrema_y.append(y[ind])
+        extrema_ind.append(ind)
     def gradient0_found(ind):
         j = ind + 1
         while j < len(gradients) - 2 and gradients[j] == 0: j += 1
@@ -142,7 +144,7 @@ def _extrema(x, y, cond1, cond2, take_edges=True):
     if take_edges and cond1(gradients[-1]): extremum_found(-1)
 
     # Return
-    return extrema_x, extrema_y
+    return dseries[extrema_ind]
 
 
 def optimize_windowsize(n):
@@ -155,6 +157,51 @@ def optimize_windowsize(n):
         if n < 2: break
         orig_n += 1
     return orig_n
+
+
+def smooth(samples, window_size=11, window_func='hanning'):
+    """
+    smooth the data using a window with requested size.
+    
+    This method is based on the convolution of a scaled window with the signal.
+    The signal is prepared by introducing reflected copies of the signal 
+    (with the window size) in both ends so that transient parts are minimized
+    in the begining and end part of the output signal.
+    
+    input:
+        data: the input signal `data(x, V)`
+        window_size: the dimension of the smoothing window; should be an odd integer
+        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
+            flat window will produce a moving average smoothing.
+
+    output:
+        the smoothed signal `data(x, V)`
+ 
+    TODO: the window parameter could be the window itself if an array instead of a string
+    NOTE: length(output) != length(input), to correct this: return y[(window_size/2-1):-(window_size/2)] instead of just y.
+
+    http://www.scipy.org/Cookbook/SignalSmooth
+    """
+    if len(samples) < window_size:
+        raise ValueError('sample count of the sound needs to be bigger than window size.')
+    if window_size < 3:
+        return samples
+
+    w = window(window_func, window_size)
+    s = np.r_[samples[window_size-1:0:-1], samples, samples[-1:-window_size:-1]]
+
+    smoothed = np.convolve(w/w.sum(), s, mode='valid')
+    smoothed = smoothed[math.floor(window_size/2.0)-1:-math.ceil(window_size/2.0)] # To have `length(output) == length(input)`
+    return pnd.Series(smoothed, index=samples.index)
+
+
+def window(wfunc, size):
+    if not wfunc in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+        raise ValueError, "Window is one of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'"
+    if wfunc == 'flat': # moving average
+        return np.ones(size, 'd')
+    else:
+        return getattr(np, wfunc)(size)
 
 
 def paulstretch(samples, samplerate, stretch, windowsize_seconds=0.25, onset_level=0.5):

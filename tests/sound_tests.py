@@ -2,17 +2,17 @@ import copy
 import os
 import numpy as np
 import scipy
-from soundlab import Sound, TimeSpectrum
-from __init__ import SoundLabTestCase
+from pychedelic.data_structures import Sound
+from __init__ import PychedelicTestCase
 
 dirname = os.path.dirname(__file__)
 
-class Sound_Test(SoundLabTestCase):
+class Sound_Test(PychedelicTestCase):
 
     def init_test(self):
-        sound = Sound(data=[[1], [2], [3]])
+        sound = Sound([1, 2, 3], sample_rate=44100)
         self.assertEqual(sound.channel_count, 1)
-        sound = Sound(data=[[1, 4], [2, 5], [3, 6]])
+        sound = Sound([[1, 4], [2, 5], [3, 6]], sample_rate=44100)
         self.assertEqual(sound.channel_count, 2)
 
     def from_file_test(self):
@@ -32,10 +32,14 @@ class Sound_Test(SoundLabTestCase):
         self.assertTrue(sound.sample_count > 44100 and sound.sample_count < 50000)
 
     def mix_test(self):
-        sound = Sound(data=[[1, 0.5, 0.5], [2, 0.4, 0.4], [3, 0.3, 0.3], [4, 0.2, 0.2], [5, 0.1, 0.1], [6, 0, 0], [7, -0.1, -0.1], [8, -0.2, -0.2]], sample_rate=2)
+        sound = Sound([[1, 0.5, 0.5], [2, 0.4, 0.4], [3, 0.3, 0.3], [4, 0.2, 0.2], [5, 0.1, 0.1], [6, 0, 0], [7, -0.1, -0.1], [8, -0.2, -0.2]], sample_rate=2)
         mixed = sound.mix()
-        self.assertEqual(np.round(mixed.data, 4), np.round([[2.0], [2.8], [3.6], [4.4], [5.2], [6.0], [6.8], [7.6]], 4))
+        self.assertTrue(isinstance(mixed, Sound))
+        self.assertEqual(mixed.index, [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5])
+        self.assertEqual(np.round(mixed.icol(0), 4), np.round([2.0, 2.8, 3.6, 4.4, 5.2, 6.0, 6.8, 7.6], 4))
 
-        sound = Sound(data=[[1], [2], [3], [4], [5], [6], [7], [8]], sample_rate=2)
+        sound = Sound([[1], [2], [3], [4], [5], [6], [7], [8]], sample_rate=2)
         mixed = sound.mix()
-        self.assertEqual(mixed.data, [[1], [2], [3], [4], [5], [6], [7], [8]])
+        self.assertTrue(isinstance(mixed, Sound))
+        self.assertEqual(mixed.index, [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5])
+        self.assertEqual(mixed.icol(0), [1, 2, 3, 4, 5, 6, 7, 8])
