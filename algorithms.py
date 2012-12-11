@@ -238,7 +238,7 @@ def paulstretch(samples, samplerate, stretch, windowsize_seconds=0.25, onset_lev
     start_pos = 0.0
     displace_pos = windowsize * 0.5
 
-    #create Hann window
+    # create Hann window
     window = 0.5 - np.cos(np.arange(windowsize, dtype='float') * 2.0 * np.pi / (windowsize - 1)) * 0.5
 
     old_windowed_buf = np.zeros(windowsize)
@@ -337,4 +337,4 @@ def paulstretch(samples, samplerate, stretch, windowsize_seconds=0.25, onset_lev
 
     ampl = np.max(stretched_sig) - np.min(stretched_sig)
     return np.int16(stretched_sig / ampl * 32767.0)
-    
+

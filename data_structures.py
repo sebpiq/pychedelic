@@ -5,8 +5,16 @@ import os
 import pylab
 import numpy as np
 import pandas as pnd
+import shutil
 from scipy.io import wavfile
+
 import algorithms as algos
+from utils import guess_fileformat, convert_file
+
+try:
+    from pyechonest import track as echonest_track
+except ImportError:
+    pass
 
 
 class PychedelicDataFrame(pnd.DataFrame):
@@ -56,6 +64,8 @@ class PychedelicSampledDataFrame(PychedelicDataFrame):
 
 
 class Sound(PychedelicSampledDataFrame):
+    # TODO: when using echonest for example, no need to load the whole sound
+    # from .mp3 to .wav back to .mp3 again
 
     def __init__(self, data, **kwargs):
         super(Sound, self).__init__(data, **kwargs)
@@ -73,6 +83,14 @@ class Sound(PychedelicSampledDataFrame):
         return (self.sample_count - 1) / float(self.sample_rate)
 
     @property
+    def echonest(self):
+        if not hasattr(self, '_echonest'):
+            with NamedTemporaryFile(mode='wb', delete=True, suffix='.wav') as fd:
+                self.to_file(fd.name)
+                self._echonest = echonest_track.track_from_filename(fd.name)
+        return self._echonest
+
+    @property
     def channel_count(self):
         return self.shape[1]
 
@@ -88,39 +106,9 @@ class Sound(PychedelicSampledDataFrame):
     @classmethod
     def from_file(cls, filename, fileformat=None):
         # TODO: the file might be very big, so this should be lazy
-        # Get the format of the file
-        try:
-            fileformat = filename.split('.')[-1]
-        except IndexError:
-            raise ValueError('unknown file format')
-
         # If the file is not .wav, we need to convert it
-        if fileformat != 'wav':
-
-            # Copying source file to a temporary file
-            origin_file = NamedTemporaryFile(mode='wb', delete=False)
-            with open(filename, 'r') as fd:
-                while True:
-                    copy_buffer = fd.read(1024*1024)
-                    if copy_buffer: origin_file.write(copy_buffer)
-                    else: break
-            origin_file.flush()
-
-            # Converting the file to wav
-            dest_file = NamedTemporaryFile(mode='rb', delete=False)
-            ffmpeg_call = ['ffmpeg', '-y',
-                            '-f', fileformat,
-                            '-i', origin_file.name,  # input options (filename last)
-                            '-vn',  # Drop any video streams if there are any
-                            '-f', 'wav',  # output options (filename last)
-                            dest_file.name
-                          ]
-            subprocess.check_call(ffmpeg_call, stdout=open(os.devnull,'w'), stderr=open(os.devnull,'w'))
-            filename = dest_file.name
-
-            # Closing file descriptors, removing files
-            origin_file.close()
-            os.unlink(origin_file.name)
+        converted_file = convert_file(filename, 'wav')
+        if converted_file: filename = converted_file.name
 
         # Finally create sound 
         sample_rate, data = wavfile.read(filename)
@@ -128,15 +116,20 @@ class Sound(PychedelicSampledDataFrame):
             data = np.array([data]).transpose()
         sound = cls(data, sample_rate=sample_rate)
 
-        # Cleaning
-        if fileformat != 'wav':
-            dest_file.close()
-            os.unlink(dest_file.name)
-
+        # Cleaning and returning
+        if converted_file: converted_file.close()
         return sound
 
     def to_file(self, filename):
-        wavfile.write(filename, self.sample_rate, self.astype(np.int16))
+        fileformat = guess_fileformat(filename)
+        if fileformat != 'wav':
+            with NamedTemporaryFile(mode='wb', delete=True, suffix='.wav') as origin_file:
+                wavfile.write(origin_file.name, self.sample_rate, self.values.astype(np.int16))
+                converted_file = convert_file(origin_file.name, fileformat)
+                shutil.copy(converted_file.name, filename)
+                converted_file.close()
+        else:
+            wavfile.write(filename, self.sample_rate, self.values.astype(np.int16))
 
     def get_spectrum(self, window_func='flat'):
         """

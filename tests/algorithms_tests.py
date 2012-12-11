@@ -2,8 +2,10 @@ import numpy as np
 import pylab
 import unittest
 import pandas as pnd
+import os
+dirname = os.path.dirname(__file__)
 
-from __init__ import PychedelicTestCase
+from __init__ import PychedelicTestCase, plot_opt
 from pychedelic.algorithms import *
 from pychedelic.data_structures import Sound
 
@@ -104,36 +106,37 @@ class Algorithms_Test(PychedelicTestCase):
         freqs, results = fft(sine_wave, SAMPLE_RATE)
         times, reconstructed = ifft(results, SAMPLE_RATE)
 
-        pylab.subplot(3, 2, 1)
-        pylab.title('(1) Sine wave 440Hz + 1020Hz')
-        pylab.plot(t, sine_wave)
+        freqs2, results2 = fft(sine_wave2, SAMPLE_RATE)
+        times2, reconstructed2 = ifft(results2, SAMPLE_RATE)
 
-        pylab.subplot(3, 2, 3)
-        pylab.title('(1) FFT amplitude')
-        pylab.plot(freqs, get_ft_amplitude_array(results), 'o')
+        if plot_opt:
+            pylab.subplot(3, 2, 1)
+            pylab.title('(1) Sine wave 440Hz + 1020Hz')
+            pylab.plot(t, sine_wave)
 
-        pylab.subplot(3, 2, 5)
-        pylab.title('(1) IFFT')
-        pylab.plot(times, reconstructed)
+            pylab.subplot(3, 2, 3)
+            pylab.title('(1) FFT amplitude')
+            pylab.plot(freqs, get_ft_amplitude_array(results), 'o')
 
-        freqs, results = fft(sine_wave2, SAMPLE_RATE)
-        times, reconstructed = ifft(results, SAMPLE_RATE)
+            pylab.subplot(3, 2, 5)
+            pylab.title('(1) IFFT')
+            pylab.plot(times, reconstructed)
 
-        pylab.subplot(3, 2, 2)
-        pylab.title('(2) Sine wave 880Hz + 1500Hz')
-        pylab.plot(t, sine_wave2)
+            pylab.subplot(3, 2, 2)
+            pylab.title('(2) Sine wave 880Hz + 1500Hz')
+            pylab.plot(t, sine_wave2)
 
-        pylab.subplot(3, 2, 4)
-        pylab.title('(2) FFT amplitude')
-        pylab.plot(freqs, get_ft_amplitude_array(results), 'o')
+            pylab.subplot(3, 2, 4)
+            pylab.title('(2) FFT amplitude')
+            pylab.plot(freqs2, get_ft_amplitude_array(results2), 'o')
 
-        pylab.subplot(3, 2, 6)
-        pylab.title('(1) IFFT')
-        pylab.plot(times, reconstructed)
+            pylab.subplot(3, 2, 6)
+            pylab.title('(2) IFFT')
+            pylab.plot(times2, reconstructed2)
 
-        pylab.show()
+            pylab.show()
 
-    def paul_stretch_test(self):
+    def paulstretch_test(self):
         # generating test signals
         SAMPLE_RATE = 44100
         SIG_SIZE = 88200
@@ -147,36 +150,42 @@ class Algorithms_Test(PychedelicTestCase):
         stretched = paulstretch(sig, SAMPLE_RATE, 2, onset_level=1.0)
         t_stretched = np.arange(0, stretched.size) * 1.0 / SAMPLE_RATE
 
-        sound = Sound.from_file('loop0.wav')
-        stretchd = paulstretch(sound.data[:,0], 44100, 2)
-        Sound(data=np.array([stretchd]).transpose(), sample_rate=44100).to_file('loop0_s.wav')
+        raw_sound = Sound.from_file(os.path.join(dirname, 'sounds/paulstretch_test_raw.wav'))
+        test_sound = Sound.from_file(os.path.join(dirname, 'sounds/paulstretch_test_stretched.wav'))
+        stretched = paulstretch(raw_sound[0], SAMPLE_RATE, 8.0, windowsize_seconds=0.1, onset_level=0.5)
+        stretched_sound = Sound(stretched, sample_rate=SAMPLE_RATE)
+        stretched_sound.to_file('stretched.wav')
 
-        pylab.subplot(2, 1, 1)
-        pylab.title('Initial signal')
-        pylab.plot(t, sig)
+        if plot_opt:
+            fig, axes = pylab.subplots(nrows=3, ncols=1)
+            pylab.title('Initial signal')
+            raw_sound.plot(ax=axes[0])
 
-        pylab.subplot(2, 1, 2)
-        pylab.title('Stretched signal')
-        pylab.plot(t_stretched, stretched)
+            pylab.title('Stretched signal')
+            stretched_sound.plot(ax=axes[1])
 
-        pylab.show()
+            pylab.title('Stretched signal')
+            test_sound[0].plot(ax=axes[2])
+            
+            pylab.show()
 
     def smooth_test(self):
+        # TODO: test
         t = np.linspace(0, 1, 44100)
         orig_data = np.cos(2 * np.pi * t * 15)
         noisy_data = orig_data + 0.5 * (np.random.random(len(t)) - 0.5)
         noisy_data = pnd.Series(noisy_data, index=t)
-
-        pylab.subplot(2, 1, 1)
-        pylab.title('Noisy signal')
-        noisy_data.plot()
-        
         smooth_data = smooth(noisy_data, window_size=50)
 
-        pylab.subplot(2, 1, 2)
-        pylab.title('Smooth signal')
-        smooth_data.plot()
-        pylab.show()
+        if plot_opt:
+            pylab.subplot(2, 1, 1)
+            pylab.title('Noisy signal')
+            noisy_data.plot()
+
+            pylab.subplot(2, 1, 2)
+            pylab.title('Smooth signal')
+            smooth_data.plot()
+            pylab.show()
 
     def loop_interpolate_test(self):
         SAMPLE_RATE = 44100

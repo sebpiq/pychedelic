@@ -2,7 +2,7 @@ import copy
 import numpy as np
 import pylab
 from pychedelic.data_structures import Sound, PychedelicSampledDataFrame
-from __init__ import PychedelicTestCase
+from __init__ import PychedelicTestCase, plot_opt
 
 
 class Spectrogram_Test(PychedelicTestCase):
@@ -18,5 +18,7 @@ class Spectrogram_Test(PychedelicTestCase):
         sine_wave = Sound(data=sound_data, sample_rate=SAMPLE_RATE)
         spectrogram = sine_wave.get_spectrogram(window_size=1024, overlap=0)
         limited_spectrogram = PychedelicSampledDataFrame({220: spectrogram[215.33203125], 440: spectrogram[430.6640625]}, sample_rate=SAMPLE_RATE)
-        limited_spectrogram.plot()
-        pylab.show()
+
+        if plot_opt:
+            limited_spectrogram.plot()
+            pylab.show()

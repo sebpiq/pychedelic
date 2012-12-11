@@ -4,8 +4,12 @@ import numpy as np
 import scipy
 from pychedelic.data_structures import Sound
 from __init__ import PychedelicTestCase
-
 dirname = os.path.dirname(__file__)
+
+# Setup the API key for testing 
+from pyechonest import config
+config.ECHO_NEST_API_KEY = '3B8NIMYFZT7YALMRB'
+
 
 class Sound_Test(PychedelicTestCase):
 
@@ -16,20 +20,29 @@ class Sound_Test(PychedelicTestCase):
         self.assertEqual(sound.channel_count, 2)
 
     def from_file_test(self):
-        sound = Sound.from_file(os.path.join(dirname, 'A440_mono.wav'))
+        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.wav'))
         self.assertEqual(sound.channel_count, 1)
         self.assertEqual(sound.sample_rate, 44100)
         self.assertEqual(sound.sample_count, 441)
 
-        sound = Sound.from_file(os.path.join(dirname, 'A440_stereo.wav'))
+        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_stereo.wav'))
         self.assertEqual(sound.channel_count, 2)
         self.assertEqual(sound.sample_rate, 44100)
         self.assertEqual(sound.sample_count, 441)
 
-        sound = Sound.from_file(os.path.join(dirname, 'A440_mono.mp3'))
+        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.mp3'))
         self.assertEqual(sound.channel_count, 1)
         self.assertEqual(sound.sample_rate, 44100)
         self.assertTrue(sound.sample_count > 44100 and sound.sample_count < 50000)
+
+    def to_file_test(self):
+        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.wav'))
+        sound.to_file('/tmp/to_file_test.mp3')
+        sound = Sound.from_file('/tmp/to_file_test.mp3')
+
+        self.assertEqual(sound.channel_count, 1)
+        self.assertEqual(sound.sample_rate, 44100)
+        self.assertTrue(sound.sample_count >= 441)
 
     def mix_test(self):
         sound = Sound([[1, 0.5, 0.5], [2, 0.4, 0.4], [3, 0.3, 0.3], [4, 0.2, 0.2], [5, 0.1, 0.1], [6, 0, 0], [7, -0.1, -0.1], [8, -0.2, -0.2]], sample_rate=2)
@@ -43,3 +56,7 @@ class Sound_Test(PychedelicTestCase):
         self.assertTrue(isinstance(mixed, Sound))
         self.assertEqual(mixed.index, [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5])
         self.assertEqual(mixed.icol(0), [1, 2, 3, 4, 5, 6, 7, 8])
+
+    def echonest_test(self):
+        sound = Sound.from_file(os.path.join(dirname, 'sounds/directions.mp3'))
+        self.assertTrue(len(sound.echonest.bars) > 0)

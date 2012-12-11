@@ -1,6 +1,5 @@
 import copy
 import numpy as np
-import matplotlib.pyplot as plt
 from __init__ import PychedelicTestCase
 from pychedelic.data_structures import PychedelicSampledDataFrame, PychedelicDataFrame
 
@@ -44,8 +43,6 @@ class PychedelicDataFrame_Test(PychedelicTestCase):
 
         df = PychedelicDataFrame({1: channel1, 2: channel2}, index=index)
         smoothen = df.smooth(1, window_size=4)
-        smoothen.plot()
-        plt.show()
         
 
 class PychedelicSampledDataFrame_Test(PychedelicTestCase):
