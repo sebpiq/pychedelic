@@ -70,7 +70,7 @@ class Sound_Test(PychedelicTestCase):
 
     def fade_test(self):
         sound = Sound({0: np.ones(22050), 1: np.ones(22050)}, sample_rate=44100)
-        sound = sound.fade(in_dur=0.10, out_dur=0.40)
+        sound = sound.fade(in_dur=0.088, out_dur=0.4)
         if True or plot_opt:
             sound.plot()
             pylab.show()

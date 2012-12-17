@@ -112,22 +112,24 @@ class Sound(PychedelicSampledDataFrame):
 
     def fade(self, in_dur=None, out_dur=None):
         # Calculate fade-in
-        window_size = in_dur * self.sample_rate
-        sustain = np.ones(self.sample_count - window_size)
-        fade = (np.exp(np.linspace(0, np.log(100), window_size)) - 1) / (100 - 1)
-        fade_in = np.hstack((fade, sustain))
+        if in_dur is not None:
+            window_size = in_dur * self.sample_rate
+            fade = (np.exp(np.linspace(0, np.log(100), window_size)) - 1) / (100 - 1)
+            fade_in = np.ones(self.sample_count)
+            fade_in[:len(fade)] = fade
 
         # Calculate fade-out
-        window_size = out_dur * self.sample_rate
-        sustain = np.ones(self.sample_count - window_size)
-        fade = (np.exp(np.linspace(0, np.log(100), window_size)) - 1) / (100 - 1)
-        fade_out = np.hstack((sustain, fade[::-1]))
+        if out_dur is not None:
+            window_size = out_dur * self.sample_rate
+            fade = (np.exp(np.linspace(0, np.log(100), window_size)) - 1) / (100 - 1)
+            fade_out = np.ones(self.sample_count)
+            fade_out[-len(fade):] = fade[::-1]
 
         # Apply fades to all channels
         sound_data = self.values.copy()
         for channel_data in sound_data.T:
-            channel_data *= fade_in
-            channel_data *= fade_out
+            if in_dur is not None: channel_data *= fade_in
+            if out_dur is not None: channel_data *= fade_out
         return self._constructor(sound_data)
 
     @classmethod
