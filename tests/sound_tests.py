@@ -2,6 +2,7 @@ import copy
 import os
 import numpy as np
 import scipy
+import pylab
 from pychedelic.data_structures import Sound
 from __init__ import PychedelicTestCase
 dirname = os.path.dirname(__file__)
@@ -56,6 +57,23 @@ class Sound_Test(PychedelicTestCase):
         self.assertTrue(isinstance(mixed, Sound))
         self.assertEqual(mixed.index, [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5])
         self.assertEqual(mixed.icol(0), [1, 2, 3, 4, 5, 6, 7, 8])
+
+    def time_stretch_test(self):
+        # length : 0.010
+        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_stereo.wav'))
+
+        stretched = sound.time_stretch(0.005)
+        self.assertEqual(np.round(stretched.length, 4), 0.005)
+
+        stretched = sound.time_stretch(0.003)
+        self.assertEqual(np.round(stretched.length, 4), 0.003)
+
+    def fade_test(self):
+        sound = Sound({0: np.ones(22050), 1: np.ones(22050)}, sample_rate=44100)
+        sound = sound.fade(in_dur=0.10, out_dur=0.40)
+        if True or plot_opt:
+            sound.plot()
+            pylab.show()
 
     def echonest_test(self):
         sound = Sound.from_file(os.path.join(dirname, 'sounds/directions.mp3'))

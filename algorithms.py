@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import pandas as pnd
+import dirac
 
 
 def fft(samples, sample_rate):
@@ -202,6 +203,15 @@ def window(wfunc, size):
         return np.ones(size, 'd')
     else:
         return getattr(np, wfunc)(size)
+
+
+def time_stretch(samples, ratio):
+    """
+    Time stretch, fine for small stretches
+    """
+    if samples.dtype != np.int16:
+        samples = samples.astype(np.int16)
+    return dirac.timeScale(samples, ratio)
 
 
 def paulstretch(samples, samplerate, stretch, windowsize_seconds=0.25, onset_level=0.5):
