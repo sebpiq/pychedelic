@@ -187,6 +187,23 @@ class Algorithms_Test(PychedelicTestCase):
             smooth_data.plot()
             pylab.show()
 
+    def interleaved_test(self):
+        data = np.array([[1, 2, 3], [11, 22, 33], [111, 222, 333]])
+        self.assertEqual(interleaved(data), [1, 2, 3, 11, 22, 33, 111, 222, 333])
+        data = np.array([[1], [11], [111], [1111]])
+        self.assertEqual(interleaved(data), [1, 11, 111, 1111])
+        data = np.array([1, 2, 3, 4, 5, 6])
+        self.assertEqual(interleaved(data), [1, 2, 3, 4, 5, 6])
+
+    def deinterleaved_test(self):
+        data = np.array([1, 2, 3, 11, 22, 33, 111, 222, 333])
+        self.assertEqual(deinterleaved(data, 3), [[1, 2, 3], [11, 22, 33], [111, 222, 333]])
+        data = np.array([1, 11, 111, 1111])
+        self.assertEqual(deinterleaved(data, 1), [[1], [11], [111], [1111]])
+        data = np.array([1, 2, 3, 4, 5, 6])
+        self.assertEqual(deinterleaved(data, 1), [[1], [2], [3], [4], [5], [6]])
+        self.assertRaises(ValueError, deinterleaved, np.array([1, 2, 3, 11, 22, 33, 111, 222]), 3)
+
     def loop_interpolate_test(self):
         SAMPLE_RATE = 44100
         SIG_SIZE = 3000

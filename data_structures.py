@@ -13,6 +13,7 @@ from utils import guess_fileformat, convert_file
 
 try:
     from pyechonest import track as echonest_track
+    from pyechonest.util import EchoNestAPIError
 except ImportError:
     pass
 
@@ -85,9 +86,12 @@ class Sound(PychedelicSampledDataFrame):
     @property
     def echonest(self):
         if not hasattr(self, '_echonest'):
-            with NamedTemporaryFile(mode='wb', delete=True, suffix='.wav') as fd:
+            with NamedTemporaryFile(mode='wb', delete=True, suffix='.mp3') as fd:
                 self.to_file(fd.name)
-                self._echonest = echonest_track.track_from_filename(fd.name)
+                try:
+                    self._echonest = echonest_track.track_from_filename(fd.name, force_upload=True)
+                except EchoNestAPIError as exc:
+                    import pdb; pdb.set_trace()
         return self._echonest
 
     @property
@@ -109,6 +113,9 @@ class Sound(PychedelicSampledDataFrame):
         """
         ratio = length / self.length
         return self._constructor(algos.time_stretch(self.values, ratio))
+
+    def pitch_shift_semitones(self, semitones):
+        return self._constructor(algos.pitch_shift_semitones(self.values, semitones))
 
     def fade(self, in_dur=None, out_dur=None):
         # Calculate fade-in

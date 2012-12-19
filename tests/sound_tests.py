@@ -68,6 +68,15 @@ class Sound_Test(PychedelicTestCase):
         stretched = sound.time_stretch(0.003)
         self.assertEqual(np.round(stretched.length, 4), 0.003)
 
+    def pitch_shift_semitones_test(self):
+        sound = Sound.from_file(os.path.join(dirname, 'sounds/directions.mp3'))
+        #import pdb; pdb.set_trace()
+        stretched = sound.pitch_shift_semitones(12)
+        stretched.to_file(os.path.join(dirname, 'sounds/directions_pitched.wav'))
+        #sound.plot()
+        #stretched.plot()
+        #pylab.show()
+        
     def fade_test(self):
         sound = Sound({0: np.ones(22050), 1: np.ones(22050)}, sample_rate=44100)
         sound = sound.fade(in_dur=0.088, out_dur=0.4)

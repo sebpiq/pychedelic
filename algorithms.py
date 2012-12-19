@@ -2,6 +2,7 @@ import math
 import numpy as np
 import pandas as pnd
 import dirac
+import soundtouch
 
 
 def fft(samples, sample_rate):
@@ -212,6 +213,74 @@ def time_stretch(samples, ratio):
     if samples.dtype != np.int16:
         samples = samples.astype(np.int16)
     return dirac.timeScale(samples, ratio)
+
+
+def interleaved(samples):
+    """
+    Convert an array of multi-channel data to a 1d interleaved array.
+    For example :
+
+        >>> data_3channels = np.array([[1, 2, 3], [11, 22, 33], [111, 222, 333]])
+        >>> interleaved(data_3channels)
+        np.array([1, 2, 3, 11, 22, 33, 111, 222, 333])
+    """
+    if samples.ndim == 2 and (samples.size % samples.shape[1]) != 0:
+        raise ValueError('malformed array')
+    if samples.ndim > 2: raise ValueError('Data should be 1 or 2 dimensions')
+
+    if samples.ndim == 1:
+        return samples
+    elif samples.ndim == 2:
+        return samples.reshape((samples.size,))
+
+
+def deinterleaved(samples, channel_count):
+    if samples.ndim != 1:
+        raise ValueError('interleaved arrays have only one dimension')
+    if (samples.size % channel_count) != 0:
+        raise ValueError('malformed array')
+    return samples.reshape((samples.size / channel_count, channel_count))
+
+
+def pitch_shift_semitones(samples, semitones):
+    if samples.ndim == 2: channel_count = samples.shape[1]
+    elif samples.ndim == 1: channel_count = 1
+    samples = interleaved(samples)
+    st = soundtouch.SoundTouch()
+    st.setChannels(channel_count)
+    #st.sampleRate = 44100
+    blockSize = 10000
+
+    # If there's more than one block to be processed, we slice the data into
+    # processing chunks and send them one by one.
+    pitched = np.array([], dtype=np.float32)
+    if len(samples) > blockSize:
+        for block_ind in range(len(samples) / blockSize):
+            start = block_ind * blockSize
+            end = start + blockSize -1
+            chunk = samples[start:end]
+            pitched = np.concatenate((pitched, _processAudio(st, chunk, semitones, channel_count)))
+        # Handle the remaining samples
+        chunk = samples[-1*(len(samples) % blockSize):]
+        np.concatenate((pitched, _processAudio(st, chunk, semitones, channel_count)))
+    else:
+        pitched = _processAudio(st, samples, semitones, channel_count)
+
+    return deinterleaved(pitched, channel_count)
+    
+
+def _processAudio(st, data, semitones, channel_count):
+    data = data.astype(np.float32)
+    # Do the processing
+    st.setPitchSemiTones(semitones)
+    st.putSamples(data)
+    out_data = np.zeros((data.size * 2,), dtype=np.float32)
+    processed_count = st.receiveSamples(out_data)
+
+    # Prepare the data, and return it, making sure the size is right
+    out_data = out_data[:processed_count * channel_count]
+    while (out_data.size % channel_count != 0): out_data = out_data[:-1]
+    return out_data
 
 
 def paulstretch(samples, samplerate, stretch, windowsize_seconds=0.25, onset_level=0.5):
