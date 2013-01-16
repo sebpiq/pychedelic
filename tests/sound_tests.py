@@ -25,16 +25,54 @@ class Sound_Test(PychedelicTestCase):
         self.assertEqual(sound.channel_count, 1)
         self.assertEqual(sound.sample_rate, 44100)
         self.assertEqual(sound.sample_count, 441)
+        # Sanity check
+        self.assertEqual(sound[0][:10].values, [0, 2053, 4098, 6125, 8133, 10101, 12040, 13919, 15756, 17521])
 
         sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_stereo.wav'))
         self.assertEqual(sound.channel_count, 2)
         self.assertEqual(sound.sample_rate, 44100)
         self.assertEqual(sound.sample_count, 441)
+        # Sanity check
+        self.assertEqual(sound.values[0:10,:], [
+            [0, 0],
+            [2053, 2053],
+            [4097, 4099],
+            [6125, 6127],
+            [8131, 8131],
+            [10104, 10103],
+            [12038, 12034],
+            [13926, 13919],
+            [15756, 15752],
+            [17523, 17522]
+        ])
 
         sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.mp3'))
         self.assertEqual(sound.channel_count, 1)
         self.assertEqual(sound.sample_rate, 44100)
         self.assertTrue(sound.sample_count > 44100 and sound.sample_count < 50000)
+
+        # Read only a segment of the file
+        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.wav'), start=0.002, end=0.004)
+        self.assertEqual(sound.channel_count, 1)
+        self.assertEqual(sound.sample_rate, 44100)
+        self.assertEqual(sound.sample_count, 88)
+
+        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_stereo.wav'), start=0.002, end=0.004)
+        self.assertEqual(sound.channel_count, 2)
+        self.assertEqual(sound.sample_rate, 44100)
+        self.assertEqual(sound.sample_count, 88)
+
+        # Omitting `end`
+        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_stereo.wav'), start=0.002)
+        self.assertEqual(sound.channel_count, 2)
+        self.assertEqual(sound.sample_rate, 44100)
+        self.assertEqual(sound.sample_count, 352)
+
+        # Omitting `start`
+        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.wav'), end=0.006)
+        self.assertEqual(sound.channel_count, 1)
+        self.assertEqual(sound.sample_rate, 44100)
+        self.assertEqual(sound.sample_count, 264)
 
     def to_file_test(self):
         sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.wav'))
@@ -69,10 +107,11 @@ class Sound_Test(PychedelicTestCase):
         self.assertEqual(np.round(stretched.length, 4), 0.003)
 
     def pitch_shift_semitones_test(self):
+        # TODO
+        """
         sound = Sound.from_file(os.path.join(dirname, 'sounds/directions.mp3'))
-        #import pdb; pdb.set_trace()
         stretched = sound.pitch_shift_semitones(12)
-        stretched.to_file(os.path.join(dirname, 'sounds/directions_pitched.wav'))
+        stretched.to_file(os.path.join(dirname, 'sounds/directions_pitched.wav'))"""
         #sound.plot()
         #stretched.plot()
         #pylab.show()

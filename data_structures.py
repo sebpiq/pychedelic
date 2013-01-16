@@ -1,11 +1,13 @@
 from tempfile import NamedTemporaryFile
 import math
+import wave
 import subprocess
 import os
 import pylab
 import numpy as np
 import pandas as pnd
 import shutil
+import traceback
 from scipy.io import wavfile
 
 import algorithms as algos
@@ -91,7 +93,7 @@ class Sound(PychedelicSampledDataFrame):
                 try:
                     self._echonest = echonest_track.track_from_filename(fd.name, force_upload=True)
                 except EchoNestAPIError as exc:
-                    import pdb; pdb.set_trace()
+                    print traceback.format_exc()
         return self._echonest
 
     @property
@@ -140,17 +142,37 @@ class Sound(PychedelicSampledDataFrame):
         return self._constructor(sound_data)
 
     @classmethod
-    def from_file(cls, filename, fileformat=None):
+    def from_file(cls, filename, fileformat=None, start=None, end=None):
+        # TODO: Test with 8-bit wavs ?
         # TODO: the file might be very big, so this should be lazy
         # If the file is not .wav, we need to convert it
         converted_file = convert_file(filename, 'wav')
         if converted_file: filename = converted_file.name
 
-        # Finally create sound 
-        sample_rate, data = wavfile.read(filename)
-        if len(data.shape) == 1:
-            data = np.array([data]).transpose()
-        sound = cls(data, sample_rate=sample_rate)
+        # Reading the data from the converted file
+        raw = wave.open(filename, 'rb')
+
+        channels = raw.getnchannels()
+        sample_width = raw.getsampwidth()       # Sample width in byte
+        if sample_width == 1: np_type = 'uint8'
+        elif sample_width == 2: np_type = 'uint16'
+        else: raise ValueError('Wave format not supported')
+        frame_rate = raw.getframerate()         
+        frame_width = channels * sample_width
+
+        if start is None: start = 0
+        start_frame = start * frame_rate
+        if end is None: end_frame = raw.getnframes()
+        else: end_frame = end * frame_rate
+        frame_count = end_frame - start_frame
+        sample_count = frame_count * channels
+
+        raw.setpos(int(start_frame))
+        data = raw.readframes(int(frame_count))
+        data = np.fromstring(data, dtype=np_type)
+        data = data.reshape([frame_count, channels])
+
+        sound = cls(data, sample_rate=frame_rate)
 
         # Cleaning and returning
         if converted_file: converted_file.close()

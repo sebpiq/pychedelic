@@ -4,10 +4,14 @@ from tempfile import NamedTemporaryFile
 
 
 def convert_file(filename, to_format):
+    """
+    Returns None if the file is already of the desired format.
+    """
     fileformat = guess_fileformat(filename)
     if fileformat == to_format: return
 
     # Copying source file to a temporary file
+    # TODO: why copying ?
     origin_file = NamedTemporaryFile(mode='wb', delete=True)
     with open(filename, 'r') as fd:
         while True:
@@ -26,6 +30,7 @@ def convert_file(filename, to_format):
                     dest_file.name
                   ]
     subprocess.check_call(ffmpeg_call, stdout=open(os.devnull,'w'), stderr=open(os.devnull,'w'))
+    origin_file.close()
     return dest_file
 
 
