@@ -1,14 +1,20 @@
 import subprocess
 import os
+import shutil
 from tempfile import NamedTemporaryFile
 
 
-def convert_file(filename, to_format):
+def convert_file(filename, to_format, to_filename=None):
     """
     Returns None if the file is already of the desired format.
     """
     fileformat = guess_fileformat(filename)
-    if fileformat == to_format: return
+    if fileformat == to_format:
+        if to_filename:
+            shutil.copy(filename, to_filename)
+            return to_filename
+        else:
+            return filename
 
     # Copying source file to a temporary file
     # TODO: why copying ?
@@ -21,17 +27,19 @@ def convert_file(filename, to_format):
     origin_file.flush()
 
     # Converting the file to wav
-    dest_file = NamedTemporaryFile(mode='rb', delete=True)
+    if to_filename is None:
+        dest_file = NamedTemporaryFile(mode='rb', delete=False)
+        to_filename = dest_file.name
     ffmpeg_call = ['ffmpeg', '-y',
                     '-f', fileformat,
                     '-i', origin_file.name,  # input options (filename last)
                     '-vn',  # Drop any video streams if there are any
                     '-f', to_format,  # output options (filename last)
-                    dest_file.name
+                    to_filename
                   ]
     subprocess.check_call(ffmpeg_call, stdout=open(os.devnull,'w'), stderr=open(os.devnull,'w'))
     origin_file.close()
-    return dest_file
+    return to_filename
 
 
 def guess_fileformat(filename):

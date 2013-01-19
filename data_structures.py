@@ -6,8 +6,8 @@ import os
 import pylab
 import numpy as np
 import pandas as pnd
-import shutil
 import traceback
+# TODO: mmaybe get rid of the scipy dependency ?
 from scipy.io import wavfile
 
 import algorithms as algos
@@ -91,7 +91,7 @@ class Sound(PychedelicSampledDataFrame):
             with NamedTemporaryFile(mode='wb', delete=True, suffix='.mp3') as fd:
                 self.to_file(fd.name)
                 try:
-                    self._echonest = echonest_track.track_from_filename(fd.name, force_upload=True)
+                    self._echonest = echonest_track.track_from_filename(fd.name)#, force_upload=True)
                 except EchoNestAPIError as exc:
                     print traceback.format_exc()
         return self._echonest
@@ -146,11 +146,10 @@ class Sound(PychedelicSampledDataFrame):
         # TODO: Test with 8-bit wavs ?
         # TODO: the file might be very big, so this should be lazy
         # If the file is not .wav, we need to convert it
-        converted_file = convert_file(filename, 'wav')
-        if converted_file: filename = converted_file.name
+        converted_filename = convert_file(filename, 'wav')
 
         # Reading the data from the converted file
-        raw = wave.open(filename, 'rb')
+        raw = wave.open(converted_filename, 'rb')
 
         channels = raw.getnchannels()
         sample_width = raw.getsampwidth()       # Sample width in byte
@@ -172,10 +171,9 @@ class Sound(PychedelicSampledDataFrame):
         data = np.fromstring(data, dtype=np_type)
         data = data.reshape([frame_count, channels])
 
+        # If a temp filename was created for the conversion, remove it.
+        if converted_filename != filename: os.remove(converted_filename)
         sound = cls(data, sample_rate=frame_rate)
-
-        # Cleaning and returning
-        if converted_file: converted_file.close()
         return sound
 
     def to_file(self, filename):
@@ -183,9 +181,7 @@ class Sound(PychedelicSampledDataFrame):
         if fileformat != 'wav':
             with NamedTemporaryFile(mode='wb', delete=True, suffix='.wav') as origin_file:
                 wavfile.write(origin_file.name, self.sample_rate, self.values.astype(np.int16))
-                converted_file = convert_file(origin_file.name, fileformat)
-                shutil.copy(converted_file.name, filename)
-                converted_file.close()
+                convert_file(origin_file.name, fileformat, to_filename=filename)
         else:
             wavfile.write(filename, self.sample_rate, self.values.astype(np.int16))
 
