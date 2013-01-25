@@ -1,11 +1,10 @@
 import copy
-import os
+import scipy.io.wavfile as sp_wavfile
 import numpy as np
-import scipy
 import pylab
-from pychedelic.data_structures import Sound
-from __init__ import PychedelicTestCase
-dirname = os.path.dirname(__file__)
+
+from pychedelic.sound import Sound
+from __init__ import PychedelicTestCase, A440_MONO_16B, A440_STEREO_16B, A440_MONO_MP3, MILES_MP3
 
 # Setup the API key for testing 
 from pyechonest import config
@@ -21,61 +20,26 @@ class Sound_Test(PychedelicTestCase):
         self.assertEqual(sound.channel_count, 2)
 
     def from_file_test(self):
-        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.wav'))
-        self.assertEqual(sound.channel_count, 1)
-        self.assertEqual(sound.sample_rate, 44100)
-        self.assertEqual(sound.sample_count, 441)
-        # Sanity check
-        self.assertEqual(sound[0][:10].values, [0, 2053, 4098, 6125, 8133, 10101, 12040, 13919, 15756, 17521])
-
-        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_stereo.wav'))
+        sound = Sound.from_file(A440_STEREO_16B)
         self.assertEqual(sound.channel_count, 2)
         self.assertEqual(sound.sample_rate, 44100)
         self.assertEqual(sound.sample_count, 441)
         # Sanity check
-        self.assertEqual(sound.values[0:10,:], [
-            [0, 0],
-            [2053, 2053],
-            [4097, 4099],
-            [6125, 6127],
-            [8131, 8131],
-            [10104, 10103],
-            [12038, 12034],
-            [13926, 13919],
-            [15756, 15752],
-            [17523, 17522]
-        ])
+        sample_rate, samples_test = sp_wavfile.read(A440_STEREO_16B)
+        self.assertEqual(sound.values[0:10,:].round(4), (samples_test[:10] / float(2**15)).round(4))
 
-        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.mp3'))
+        sound = Sound.from_file(A440_MONO_MP3)
         self.assertEqual(sound.channel_count, 1)
         self.assertEqual(sound.sample_rate, 44100)
         self.assertTrue(sound.sample_count > 44100 and sound.sample_count < 50000)
 
-        # Read only a segment of the file
-        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.wav'), start=0.002, end=0.004)
-        self.assertEqual(sound.channel_count, 1)
-        self.assertEqual(sound.sample_rate, 44100)
-        self.assertEqual(sound.sample_count, 88)
-
-        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_stereo.wav'), start=0.002, end=0.004)
-        self.assertEqual(sound.channel_count, 2)
-        self.assertEqual(sound.sample_rate, 44100)
-        self.assertEqual(sound.sample_count, 88)
-
-        # Omitting `end`
-        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_stereo.wav'), start=0.002)
-        self.assertEqual(sound.channel_count, 2)
-        self.assertEqual(sound.sample_rate, 44100)
-        self.assertEqual(sound.sample_count, 352)
-
-        # Omitting `start`
-        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.wav'), end=0.006)
+        sound = Sound.from_file(A440_MONO_MP3, end=0.006)
         self.assertEqual(sound.channel_count, 1)
         self.assertEqual(sound.sample_rate, 44100)
         self.assertEqual(sound.sample_count, 264)
 
     def to_file_test(self):
-        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_mono.wav'))
+        sound = Sound.from_file(A440_MONO_16B)
         sound.to_file('/tmp/to_file_test.mp3')
         sound = Sound.from_file('/tmp/to_file_test.mp3')
 
@@ -96,15 +60,15 @@ class Sound_Test(PychedelicTestCase):
         self.assertEqual(mixed.index, [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5])
         self.assertEqual(mixed.icol(0), [1, 2, 3, 4, 5, 6, 7, 8])
 
-    def time_stretch_test(self):
+    #def time_stretch_test(self):
         # length : 0.010
-        sound = Sound.from_file(os.path.join(dirname, 'sounds/A440_stereo.wav'))
+        #sound = Sound.from_file(A440_MONO_16B)
 
-        stretched = sound.time_stretch(0.005)
-        self.assertEqual(np.round(stretched.length, 4), 0.005)
+        #stretched = sound.time_stretch(0.005)
+        #self.assertEqual(np.round(stretched.length, 4), 0.005)
 
-        stretched = sound.time_stretch(0.003)
-        self.assertEqual(np.round(stretched.length, 4), 0.003)
+        #stretched = sound.time_stretch(0.003)
+        #self.assertEqual(np.round(stretched.length, 4), 0.003)
 
     def pitch_shift_semitones_test(self):
         # TODO
@@ -124,5 +88,5 @@ class Sound_Test(PychedelicTestCase):
             pylab.show()
 
     def echonest_test(self):
-        sound = Sound.from_file(os.path.join(dirname, 'sounds/directions.mp3'))
+        sound = Sound.from_file(MILES_MP3)
         self.assertTrue(len(sound.echonest.bars) > 0)

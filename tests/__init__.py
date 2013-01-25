@@ -7,6 +7,11 @@ import numpy as np
 
 plot_opt = False
 
+sounddir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'sounds'))
+A440_MONO_16B = os.path.join(sounddir, 'A440_mono_16B.wav')
+A440_STEREO_16B = os.path.join(sounddir, 'A440_stereo_16B.wav')
+A440_MONO_MP3 = os.path.join(sounddir, 'A440_mono.mp3')
+MILES_MP3 = os.path.join(sounddir, 'directions.mp3')
 
 class PychedelicTestCase(unittest.TestCase):
 

@@ -1,1 +1,2 @@
-from data_structures import Sound, Spectrum
+from sound import Sound
+from spectrum import Spectrum, Spectrogram

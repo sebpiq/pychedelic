@@ -7,7 +7,7 @@ dirname = os.path.dirname(__file__)
 
 from __init__ import PychedelicTestCase, plot_opt
 from pychedelic.algorithms import *
-from pychedelic.data_structures import Sound
+from pychedelic.sound import Sound
 
 
 class Algorithms_Test(PychedelicTestCase):

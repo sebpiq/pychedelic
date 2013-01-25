@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 from __init__ import PychedelicTestCase
-from pychedelic.data_structures import PychedelicSampledDataFrame, PychedelicDataFrame
+from pychedelic.base_data_frames import PychedelicSampledDataFrame, PychedelicDataFrame
 
 
 class PychedelicDataFrame_Test(PychedelicTestCase):
