@@ -62,8 +62,8 @@ class Sound(PychedelicSampledDataFrame):
         """
         Stretch sound to `length`.
         """
-        ratio = length / self.length
-        return self._constructor(algos.time_stretch(self.values, ratio))
+        ratio = self.length / length
+        return self._constructor(algos.time_stretch(self.values, ratio, sample_rate=self.sample_rate))
 
     def pitch_shift_semitones(self, semitones):
         return self._constructor(algos.pitch_shift_semitones(self.values, semitones))

@@ -1,8 +1,11 @@
+from tempfile import NamedTemporaryFile
 import math
 import numpy as np
 import pandas as pnd
-import dirac
+import pysox
 import soundtouch
+
+from utils.files import read_wav, write_wav
 
 
 def fft(samples, sample_rate):
@@ -206,13 +209,21 @@ def window(wfunc, size):
         return getattr(np, wfunc)(size)
 
 
-def time_stretch(samples, ratio):
-    """
-    Time stretch, fine for small stretches
-    """
-    if samples.dtype != np.int16:
-        samples = samples.astype(np.int16)
-    return dirac.timeScale(samples, ratio)
+def time_stretch(samples, ratio, sample_rate=44100):
+    with NamedTemporaryFile(delete=True, suffix='.wav') as infile:
+        with NamedTemporaryFile(delete=True, suffix='.wav') as outfile:
+            write_wav(infile, samples, sample_rate=sample_rate)
+            infile.flush()
+            sox_in = pysox.CSoxStream(infile.name)
+            sox_out = pysox.CSoxStream(outfile.name, 'w', sox_in.get_signal())
+            chain = pysox.CEffectsChain(sox_in, sox_out)
+            effect = pysox.CEffect('tempo', [b'%s' % ratio])
+            chain.add_effect(effect)
+            chain.flow_effects()
+            sox_out.close()
+            outfile.flush()
+            data, infos = read_wav(outfile)
+    return data
 
 
 def interleaved(samples):

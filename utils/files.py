@@ -12,8 +12,8 @@ import subprocess
 
 
 def samples_to_string(data):
-    data = (data.astype(np.float32).clip(-1, 1) + 1) * 2**15
-    return data.astype(np.uint16).tostring()
+    data = data.astype(np.float32).clip(-1, 1) * 2**15
+    return data.astype(np.int16).tostring()
     
 
 def write_wav(f, data, sample_rate=44100):
@@ -86,7 +86,7 @@ def convert_file(filename, to_format, to_filename=None):
     if to_filename is None:
         dest_file = NamedTemporaryFile(mode='rb', delete=False)
         to_filename = dest_file.name
-    avconv_call = ['ffmpeg', '-y',
+    avconv_call = ['avconv', '-y',
                     '-f', fileformat,
                     '-i', origin_file.name,  # input options (filename last)
                     '-vn',  # Drop any video streams if there are any

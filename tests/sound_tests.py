@@ -60,15 +60,15 @@ class Sound_Test(PychedelicTestCase):
         self.assertEqual(mixed.index, [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5])
         self.assertEqual(mixed.icol(0), [1, 2, 3, 4, 5, 6, 7, 8])
 
-    #def time_stretch_test(self):
+    def time_stretch_test(self):
         # length : 0.010
-        #sound = Sound.from_file(A440_MONO_16B)
+        sound = Sound.from_file(A440_MONO_16B)
 
-        #stretched = sound.time_stretch(0.005)
-        #self.assertEqual(np.round(stretched.length, 4), 0.005)
+        stretched = sound.time_stretch(0.005)
+        self.assertEqual(np.round(stretched.length, 4), 0.005)
 
-        #stretched = sound.time_stretch(0.003)
-        #self.assertEqual(np.round(stretched.length, 4), 0.003)
+        stretched = sound.time_stretch(0.003)
+        self.assertEqual(np.round(stretched.length, 4), 0.003)
 
     def pitch_shift_semitones_test(self):
         # TODO
