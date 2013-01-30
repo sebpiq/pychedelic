@@ -2,6 +2,7 @@ import copy
 import scipy.io.wavfile as sp_wavfile
 import numpy as np
 import pylab
+import wave
 
 from pychedelic.sound import Sound
 from __init__ import PychedelicTestCase, A440_MONO_16B, A440_STEREO_16B, A440_MONO_MP3, MILES_MP3
@@ -29,6 +30,7 @@ class Sound_Test(PychedelicTestCase):
         self.assertEqual(sound.values[0:10,:].round(4), (samples_test[:10] / float(2**15)).round(4))
 
         sound = Sound.from_file(A440_MONO_MP3)
+        self.assertEqual(sound.values.shape[1], 1)
         self.assertEqual(sound.channel_count, 1)
         self.assertEqual(sound.sample_rate, 44100)
         self.assertTrue(sound.sample_count > 44100 and sound.sample_count < 50000)
@@ -46,6 +48,20 @@ class Sound_Test(PychedelicTestCase):
         self.assertEqual(sound.channel_count, 1)
         self.assertEqual(sound.sample_rate, 44100)
         self.assertTrue(sound.sample_count >= 441)
+
+    def iter_raw_test(self):
+        sound = Sound.from_file(A440_MONO_16B)
+        raw_data = ''
+        for chunk in sound.iter_raw(10):
+            raw_data += chunk
+        raw_test = wave.open(A440_MONO_16B, 'rb').readframes(100000)    
+        self.assertEqual(raw_data, raw_test)
+
+    def to_raw_test(self):
+        sound = Sound.from_file(A440_MONO_16B)
+        raw_data = sound.to_raw()
+        raw_test = wave.open(A440_MONO_16B, 'rb').readframes(100000)    
+        self.assertEqual(raw_data, raw_test)
 
     def mix_test(self):
         sound = Sound([[1, 0.5, 0.5], [2, 0.4, 0.4], [3, 0.3, 0.3], [4, 0.2, 0.2], [5, 0.1, 0.1], [6, 0, 0], [7, -0.1, -0.1], [8, -0.2, -0.2]], sample_rate=2)

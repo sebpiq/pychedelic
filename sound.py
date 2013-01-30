@@ -6,7 +6,8 @@ import traceback
 
 import algorithms as algos
 from base_data_frames import PychedelicSampledDataFrame
-from utils.files import read_wav, write_wav, guess_fileformat, convert_file
+from utils.files import (read_wav, write_wav, guess_fileformat,
+    convert_file, samples_to_string)
 
 try:
     from pyechonest import track as echonest_track
@@ -109,6 +110,18 @@ class Sound(PychedelicSampledDataFrame):
                 convert_file(origin_file.name, fileformat, to_filename=filename)
         else:
             write_wav(filename, self.values, sample_rate=self.sample_rate)
+
+    def iter_raw(self, block_size=0):
+        position = 0
+        samp_count = self.shape[0]
+        if block_size == 0: block_size = samp_count
+        while position < samp_count:
+            samples = self.values[position:position + block_size, :]
+            yield samples_to_string(samples)
+            position += block_size
+
+    def to_raw(self):
+        return self.iter_raw().next()
 
     def get_spectrum(self, window_func='flat'):
         """
