@@ -12,7 +12,13 @@ import subprocess
 
 
 def samples_to_string(data):
-    data = data.astype(np.float32).clip(-1, 1) * 2**15
+    """
+    Takes a float32 numpy array, containing audio data in the range [-1, 1],
+    returns the equivalent wav byte string.
+    `data` can be stereo, mono, or a one-dimensional array (thus mono).
+    """
+    data = data.astype(np.float32) * 2**15
+    data = data.clip(-2**15, 2**15 - 1)
     return data.astype(np.int16).tostring()
     
 

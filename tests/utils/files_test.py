@@ -51,6 +51,7 @@ class read_write_wave_Test(PychedelicTestCase):
         self.assertEqual(infos['channel_count'], 1)
 
     def write_wav_test(self):
+        # Write mono
         samples = np.sin(np.linspace(0, 0.1, 4410) * 2 * np.pi * 440)
         samples = samples.reshape(4410, 1)
         dest_file = NamedTemporaryFile(delete=True)
@@ -61,6 +62,7 @@ class read_write_wave_Test(PychedelicTestCase):
         self.assertEqual(samples[:10,0].round(3), (samples_written[:10] / float(2**15)).round(3))
         dest_file.close()
 
+        # Write stereo
         samples = np.sin(np.linspace(0, 0.1, 4410) * 2 * np.pi * 440)
         samples = samples.reshape(4410, 1)
         samples = np.hstack((samples, samples))
@@ -70,4 +72,31 @@ class read_write_wave_Test(PychedelicTestCase):
         self.assertEqual(sample_rate, 44100)
         self.assertEqual(samples_written.shape, (4410, 2))
         self.assertEqual(samples[:10,:].round(3), (samples_written[:10,:] / float(2**15)).round(3))
+        dest_file.close()
+
+        # Write edge values 1.0
+        samples = np.array([1.0] * 441, dtype=np.float32)
+        samples = samples.reshape(441, 1)
+        dest_file = NamedTemporaryFile(delete=True)
+        write_wav(dest_file, samples, sample_rate=44100)
+        sample_rate, samples_written = sp_wavfile.read(dest_file.name)
+        self.assertEqual(samples_written, np.array([2**15 - 1] * 441, dtype=np.int16))
+        dest_file.close()
+
+        # Write value 2.0, clipped to 1.0
+        samples = np.array([2.0] * 441, dtype=np.float32)
+        samples = samples.reshape(441, 1)
+        dest_file = NamedTemporaryFile(delete=True)
+        write_wav(dest_file, samples, sample_rate=44100)
+        sample_rate, samples_written = sp_wavfile.read(dest_file.name)
+        self.assertEqual(samples_written, np.array([2**15 - 1] * 441, dtype=np.int16))
+        dest_file.close()
+
+        # Write edge values -1.0
+        samples = np.array([-1.0] * 441, dtype=np.float32)
+        samples = samples.reshape(441, 1)
+        dest_file = NamedTemporaryFile(delete=True)
+        write_wav(dest_file, samples, sample_rate=44100)
+        sample_rate, samples_written = sp_wavfile.read(dest_file.name)
+        self.assertEqual(samples_written, np.array([-2**15] * 441, dtype=np.int16))
         dest_file.close()
