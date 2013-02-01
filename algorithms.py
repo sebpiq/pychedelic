@@ -225,6 +225,87 @@ def time_stretch(samples, ratio, sample_rate=44100):
     return data
 
 
+def optimize_windowsize(n):
+    orig_n=n
+    while True:
+        n=orig_n
+        while (n%2)==0:
+            n/=2
+        while (n%3)==0:
+            n/=3
+        while (n%5)==0:
+            n/=5
+
+        if n<2:
+            break
+        orig_n+=1
+    return orig_n
+
+
+def paulstretch(samples, ratio, windowsize_seconds=0.25, sample_rate=44100):
+    """
+    Paul's Extreme Sound Stretch (Paulstretch) - Python version
+    
+    by Nasca Octavian PAUL, Targu Mures, Romania
+    
+    https://github.com/paulnasca/paulstretch_python
+    http://hypermammut.sourceforge.net/paulstretch/
+    """
+    nsamples, nchannels = samples.shape[0], samples.shape[1]
+
+    # make sure that windowsize is even and larger than 16
+    windowsize = int(windowsize_seconds * sample_rate)
+    if windowsize < 16: windowsize = 16
+    windowsize = optimize_windowsize(windowsize)
+    windowsize = int(windowsize/2) * 2
+    half_windowsize = int(windowsize/2)
+
+    # correct the end of the smp
+    end_size = int(sample_rate*0.05)
+    if end_size < 16: end_size=16
+    samples[nsamples-end_size:nsamples,:] *= np.array([np.linspace(1, 0, end_size)]).transpose()
+    
+    # compute the displacement inside the input file
+    start_pos = 0.0
+    displace_pos = (windowsize*0.5)/ratio
+
+    # create Window window
+    window = pow(1.0 - pow(np.linspace(-1.0, 1.0, windowsize), 2.0), 1.25)
+    window = np.array([window]).transpose()
+    old_windowed_buf = np.zeros((windowsize, nchannels))
+
+    while start_pos < nsamples:
+        # get the windowed buffer
+        istart_pos = int(np.floor(start_pos))
+        buf = samples[istart_pos:istart_pos+windowsize,:]
+        if buf.shape[0] < windowsize:
+            buf = np.append(buf, np.zeros((windowsize - buf.shape[0], nchannels)), axis=0)
+        buf = buf * window
+    
+        # get the amplitudes of the frequency components and discard the phases
+        freqs = abs(np.fft.rfft(buf, axis=0))
+
+        # randomize the phases by multiplication with a random complex number with modulus=1
+        ph = np.random.uniform(0, 2*np.pi, (freqs.shape[0], nchannels)) * 1j
+        freqs = freqs * np.exp(ph)
+
+        # do the inverse FFT 
+        buf = np.fft.irfft(freqs, axis=0)
+
+        # window again the output buffer
+        buf *= window
+
+        # overlap-add the output
+        output = buf[0:half_windowsize,:] + old_windowed_buf[half_windowsize:windowsize,:]
+        old_windowed_buf = buf
+
+        # remove the resulted amplitude modulation
+        # update: there is no need to the new windowing function
+        yield output
+
+        start_pos += displace_pos
+
+
 def interleaved(samples):
     """
     Convert an array of multi-channel data to a 1d interleaved array.

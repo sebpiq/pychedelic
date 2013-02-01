@@ -146,26 +146,29 @@ class Algorithms_Test(PychedelicTestCase):
             np.sin(2*np.pi*110*t[:SIG_SIZE/2]),
             np.sin(2*np.pi*1020*t[SIG_SIZE/2:])
         ))
-
-        stretched = paulstretch(sig, SAMPLE_RATE, 2, onset_level=1.0)
+        '''
+        stretched = paulstretch(sig, 2, sample_rate=SAMPLE_RATE)
         t_stretched = np.arange(0, stretched.size) * 1.0 / SAMPLE_RATE
-
+        '''
         raw_sound = Sound.from_file(os.path.join(dirname, 'sounds/paulstretch_test_raw.wav'))
         test_sound = Sound.from_file(os.path.join(dirname, 'sounds/paulstretch_test_stretched.wav'))
-        stretched = paulstretch(raw_sound[0], SAMPLE_RATE, 8.0, windowsize_seconds=0.1, onset_level=0.5)
-        stretched_sound = Sound(stretched, sample_rate=SAMPLE_RATE)
-        stretched_sound.to_file('stretched.wav')
+        stretched = paulstretch(raw_sound.values, 8.0, sample_rate=SAMPLE_RATE, windowsize_seconds=0.1)
+        stretched_sound = Sound(reduce(lambda acc, c: np.append(acc, c, axis=0), stretched), sample_rate=SAMPLE_RATE)
 
         if plot_opt:
-            fig, axes = pylab.subplots(nrows=3, ncols=1)
+            #fig, axes = pylab.subplots(nrows=3, ncols=1)
+
+            pylab.subplot(3, 1, 1)
             pylab.title('Initial signal')
-            raw_sound.plot(ax=axes[0])
+            raw_sound.ix[:,0].plot()
 
+            pylab.subplot(3, 1, 2)
             pylab.title('Stretched signal')
-            stretched_sound.plot(ax=axes[1])
+            stretched_sound.ix[:,0].plot()
 
-            pylab.title('Stretched signal')
-            test_sound[0].plot(ax=axes[2])
+            pylab.subplot(3, 1, 3)
+            pylab.title('Test signal')
+            test_sound.ix[:,0].plot()
             
             pylab.show()
 

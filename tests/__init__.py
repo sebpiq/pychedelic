@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 
 
-plot_opt = False
+plot_opt = True
 
 sounddir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'sounds'))
 A440_MONO_16B = os.path.join(sounddir, 'A440_mono_16B.wav')
