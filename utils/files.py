@@ -9,6 +9,7 @@ import math
 import numpy as np
 import wave
 import subprocess
+import types
 
 
 def samples_to_string(data):
@@ -24,10 +25,16 @@ def samples_to_string(data):
 
 def write_wav(f, data, sample_rate=44100):
     fd = wave.open(f, mode='wb')
-    fd.setnchannels(data.shape[1])
     fd.setsampwidth(2)
     fd.setframerate(sample_rate)
-    fd.writeframes(samples_to_string(data))
+    if isinstance(data, types.GeneratorType):
+        chunk = data.next()
+        fd.setnchannels(chunk.shape[1])
+        fd.writeframes(samples_to_string(chunk))
+        for chunk in data: fd.writeframes(samples_to_string(chunk))
+    else:
+        fd.setnchannels(data.shape[1])
+        fd.writeframes(samples_to_string(data))
 
 
 def read_wav(f, start=None, end=None):

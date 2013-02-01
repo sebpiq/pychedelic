@@ -100,3 +100,16 @@ class read_write_wave_Test(PychedelicTestCase):
         sample_rate, samples_written = sp_wavfile.read(dest_file.name)
         self.assertEqual(samples_written, np.array([-2**15] * 441, dtype=np.int16))
         dest_file.close()
+
+        # Write with generator as input
+        samples = np.sin(np.linspace(0, 0.1, 4410) * 2 * np.pi * 440)
+        samples = samples.reshape(4410, 1)
+        samples = np.hstack((samples, samples))
+        dest_file = NamedTemporaryFile(delete=True)
+        gen = (samples[i*100:(i+1)*100,:] for i in range(45))
+        write_wav(dest_file, gen, sample_rate=44100)
+        sample_rate, samples_written = sp_wavfile.read(dest_file.name)
+        self.assertEqual(sample_rate, 44100)
+        self.assertEqual(samples_written.shape, (4410, 2))
+        self.assertEqual(samples[:10,:].round(3), (samples_written[:10,:] / float(2**15)).round(3))
+        dest_file.close()
