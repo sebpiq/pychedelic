@@ -20,9 +20,9 @@ class Spectrum(PychedelicSampledDataFrame):
         Performs inverse FFT to reconstruct a sound from this spectrum.
         """
         from sound import Sound
-        times, results = algos.ifft(self.icol(0), 1.0 / self.sample_rate)
-        sample_rate = 2 * (self.sample_count - 1) / self.sample_rate
-        return Sound(results, sample_rate=sample_rate)
+        times, results = algos.ifft(self.icol(0), 1.0 / self.frame_rate)
+        frame_rate = 2 * (self.frame_count - 1) / self.frame_rate
+        return Sound(results, frame_rate=frame_rate)
 
 
 class Spectrogram(PychedelicSampledDataFrame):

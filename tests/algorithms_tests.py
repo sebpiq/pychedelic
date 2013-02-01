@@ -66,48 +66,48 @@ class Algorithms_Test(PychedelicTestCase):
 
     def goertzel_test(self):
         # generating test signals
-        SAMPLE_RATE = 44100
-        WINDOW_SIZE = 1024
-        t = np.linspace(0, 1, SAMPLE_RATE)[:WINDOW_SIZE]
+        frame_rate = 44100
+        window_size = 1024
+        t = np.linspace(0, 1, frame_rate)[:window_size]
         sine_wave = np.sin(2*np.pi*440*t) + np.sin(2*np.pi*1020*t)
-        sine_wave = sine_wave * np.hamming(WINDOW_SIZE)
+        sine_wave = sine_wave * np.hamming(window_size)
         sine_wave2 = np.sin(2*np.pi*880*t) + np.sin(2*np.pi*1500*t)
-        sine_wave2 = sine_wave2 * np.hamming(WINDOW_SIZE)
+        sine_wave2 = sine_wave2 * np.hamming(window_size)
 
         # Finding the FT bins where maximums should be
         def find_bin(freq):
-            bins = np.fft.fftfreq(sine_wave.size, 1.0 / SAMPLE_RATE)
+            bins = np.fft.fftfreq(sine_wave.size, 1.0 / frame_rate)
             for i, b in enumerate(bins[1:]):
                 if b > freq:
                     if (b - freq) < (freq - bins[i]): return b
                     else: return bins[i]
 
         # applying Goertzel on those signals
-        freqs, results = goertzel(sine_wave, SAMPLE_RATE, (400, 500),  (900, 1100))
+        freqs, results = goertzel(sine_wave, frame_rate, (400, 500),  (900, 1100))
         result_maxs = maxima(pnd.Series(get_ft_amplitude_array(results), index=freqs), take_edges=False)
         self.assertItemsEqual([find_bin(440), find_bin(1020)], result_maxs.index)
 
         # applying Goertzel on those signals
-        freqs, results = goertzel(sine_wave2, SAMPLE_RATE, (800, 900),  (1400, 1600))
+        freqs, results = goertzel(sine_wave2, frame_rate, (800, 900),  (1400, 1600))
         result_maxs = maxima(pnd.Series(get_ft_amplitude_array(results), index=freqs), take_edges=False)
         self.assertItemsEqual([find_bin(880), find_bin(1500)], result_maxs.index)
 
     def fft_test(self):
         # TODO
         # generating test signals
-        SAMPLE_RATE = 44100
-        WINDOW_SIZE = 1024
-        t = np.linspace(0, 1, SAMPLE_RATE)[:WINDOW_SIZE]
+        frame_rate = 44100
+        window_size = 1024
+        t = np.linspace(0, 1, frame_rate)[:window_size]
         sine_wave = np.sin(2*np.pi*440*t) + np.sin(2*np.pi*1020*t)
-        sine_wave = sine_wave * np.hamming(WINDOW_SIZE)
+        sine_wave = sine_wave * np.hamming(window_size)
         sine_wave2 = np.sin(2*np.pi*880*t) + np.sin(2*np.pi*1500*t)
-        sine_wave2 = sine_wave2 * np.hamming(WINDOW_SIZE)
+        sine_wave2 = sine_wave2 * np.hamming(window_size)
 
-        freqs, results = fft(sine_wave, SAMPLE_RATE)
-        times, reconstructed = ifft(results, SAMPLE_RATE)
+        freqs, results = fft(sine_wave, frame_rate)
+        times, reconstructed = ifft(results, frame_rate)
 
-        freqs2, results2 = fft(sine_wave2, SAMPLE_RATE)
-        times2, reconstructed2 = ifft(results2, SAMPLE_RATE)
+        freqs2, results2 = fft(sine_wave2, frame_rate)
+        times2, reconstructed2 = ifft(results2, frame_rate)
 
         if plot_opt:
             pylab.subplot(3, 2, 1)
@@ -138,22 +138,22 @@ class Algorithms_Test(PychedelicTestCase):
 
     def paulstretch_test(self):
         # generating test signals
-        SAMPLE_RATE = 44100
-        SIG_SIZE = 88200
+        frame_rate = 44100
+        sig_size = 88200
 
-        t = np.linspace(0, 10, 10 * SAMPLE_RATE)[:SIG_SIZE]
+        t = np.linspace(0, 10, 10 * frame_rate)[:sig_size]
         sig = np.hstack((
-            np.sin(2*np.pi*110*t[:SIG_SIZE/2]),
-            np.sin(2*np.pi*1020*t[SIG_SIZE/2:])
+            np.sin(2*np.pi*110*t[:sig_size/2]),
+            np.sin(2*np.pi*1020*t[sig_size/2:])
         ))
         '''
-        stretched = paulstretch(sig, 2, sample_rate=SAMPLE_RATE)
-        t_stretched = np.arange(0, stretched.size) * 1.0 / SAMPLE_RATE
+        stretched = paulstretch(sig, 2, frame_rate=frame_rate)
+        t_stretched = np.arange(0, stretched.size) * 1.0 / frame_rate
         '''
         raw_sound = Sound.from_file(os.path.join(dirname, 'sounds/paulstretch_test_raw.wav'))
         test_sound = Sound.from_file(os.path.join(dirname, 'sounds/paulstretch_test_stretched.wav'))
-        stretched = paulstretch(raw_sound.values, 8.0, sample_rate=SAMPLE_RATE, windowsize_seconds=0.1)
-        stretched_sound = Sound(reduce(lambda acc, c: np.append(acc, c, axis=0), stretched), sample_rate=SAMPLE_RATE)
+        stretched = paulstretch(raw_sound.values, 8.0, frame_rate=frame_rate, windowsize_seconds=0.1)
+        stretched_sound = Sound(reduce(lambda acc, c: np.append(acc, c, axis=0), stretched), frame_rate=frame_rate)
 
         if plot_opt:
             #fig, axes = pylab.subplots(nrows=3, ncols=1)
@@ -208,13 +208,13 @@ class Algorithms_Test(PychedelicTestCase):
         self.assertRaises(ValueError, deinterleaved, np.array([1, 2, 3, 11, 22, 33, 111, 222]), 3)
 
     def loop_interpolate_test(self):
-        SAMPLE_RATE = 44100
-        SIG_SIZE = 3000
+        frame_rate = 44100
+        sig_size = 3000
 
-        t = np.linspace(0, 10, 10 * SAMPLE_RATE)[:SIG_SIZE]
+        t = np.linspace(0, 10, 10 * frame_rate)[:sig_size]
         sig = np.hstack((
-            np.sin(2*np.pi*110*t[:SIG_SIZE/2]),
-            np.sin(2*np.pi*1020*t[SIG_SIZE/2:])
+            np.sin(2*np.pi*110*t[:sig_size/2]),
+            np.sin(2*np.pi*1020*t[sig_size/2:])
         ))
 
         

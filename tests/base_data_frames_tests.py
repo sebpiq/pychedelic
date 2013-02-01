@@ -50,6 +50,6 @@ class PychedelicSampledDataFrame_Test(PychedelicTestCase):
     def init_test(self):
         channel1 = np.random.random(5)
         
-        df = PychedelicSampledDataFrame({1: channel1}, sample_rate=4)
+        df = PychedelicSampledDataFrame({1: channel1}, frame_rate=4)
         self.assertEqual(df.index, [0, 0.25, 0.5, 0.75, 1])
-        self.assertEqual(df.sample_count, 5)
+        self.assertEqual(df.frame_count, 5)

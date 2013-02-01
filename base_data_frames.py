@@ -31,20 +31,20 @@ class PychedelicSampledDataFrame(PychedelicDataFrame):
 
     def __init__(self, data, **kwargs):
         try:
-            sample_rate = kwargs.pop('sample_rate')
+            frame_rate = kwargs.pop('frame_rate')
         except KeyError:
-            raise TypeError('sample_rate kwarg is required')
+            raise TypeError('frame_rate kwarg is required')
         if 'index' in kwargs:
-            raise TypeError('index is generated automatically with sample_rate')
+            raise TypeError('index is generated automatically with frame_rate')
 
         super(PychedelicSampledDataFrame, self).__init__(data, **kwargs)
-        self.sample_rate = sample_rate
-        self.index = np.arange(0, self.shape[0]) * 1.0 / sample_rate
+        self.frame_rate = frame_rate
+        self.index = np.arange(0, self.shape[0]) * 1.0 / frame_rate
 
     @property
-    def sample_count(self):
+    def frame_count(self):
         return self.shape[0]
 
     def _constructor(self, *args, **kwargs):
-        kwargs.setdefault('sample_rate', self.sample_rate)
+        kwargs.setdefault('frame_rate', self.frame_rate)
         return self.__class__(*args, **kwargs)

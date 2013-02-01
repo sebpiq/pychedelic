@@ -7,32 +7,32 @@ import pysox
 from utils.files import read_wav, write_wav
 
 
-def fft(samples, sample_rate):
+def fft(samples, frame_rate):
     """
     Performs the FFT of a real, 1-dimension signal.
     """
-    f_results = np.fft.fftfreq(len(samples), 1.0 / sample_rate)
+    f_results = np.fft.fftfreq(len(samples), 1.0 / frame_rate)
     f_results = f_results[:len(f_results)/2 + 1]
     f_results[-1] = -f_results[-1] # Because last term is -Nyquist f
     results = np.fft.rfft(samples)
     return f_results, results
 
 
-def ifft(samples, sample_rate):
+def ifft(samples, frame_rate):
     """
     Performs the inverse FFT of the spectrum of a real 1-dimension signal (when in time domain).
     """
     results = np.fft.irfft(samples)
-    t_results = np.arange(0, (len(samples) - 1) * 2) * 1.0 / sample_rate
+    t_results = np.arange(0, (len(samples) - 1) * 2) * 1.0 / frame_rate
     return t_results, results
 
 
-def goertzel(samples, sample_rate, *freqs):
+def goertzel(samples, frame_rate, *freqs):
     """
     Implementation of the Goertzel algorithm, useful for calculating individual
     terms of a discrete Fourier transform.
 
-    `samples` is a windowed one-dimensional signal originally sampled at `sample_rate`.
+    `samples` is a windowed one-dimensional signal originally sampled at `frame_rate`.
  inverse_tan(b(n)/a(n))
     The function returns 2 arrays, one containing the actual frequencies calculated,
     the second the coefficients `(real part, imag part, power)` for each of those frequencies.
@@ -46,7 +46,7 @@ def goertzel(samples, sample_rate, *freqs):
     """
     if isinstance(samples, np.ndarray): samples = samples.tolist() # We need simple list, no numpy.array
     window_size = len(samples)
-    f_step = sample_rate / float(window_size)
+    f_step = frame_rate / float(window_size)
     f_step_normalized = 1.0 / window_size
 
     # Calculate all the DFT bins we have to compute to include frequencies
@@ -79,7 +79,7 @@ def goertzel(samples, sample_rate, *freqs):
 
         # Storing results `(complex result, amplitude, phase)`
         results.append(complex(0.5 * w_real * d1 - d2, w_imag * d1))
-        f_results.append(f * sample_rate)
+        f_results.append(f * frame_rate)
     return np.array(f_results), np.array(results)
 
 
@@ -208,10 +208,10 @@ def window(wfunc, size):
         return getattr(np, wfunc)(size)
 
 
-def time_stretch(samples, ratio, sample_rate=44100):
+def time_stretch(samples, ratio, frame_rate=44100):
     with NamedTemporaryFile(delete=True, suffix='.wav') as infile:
         with NamedTemporaryFile(delete=True, suffix='.wav') as outfile:
-            write_wav(infile, samples, sample_rate=sample_rate)
+            write_wav(infile, samples, frame_rate=frame_rate)
             infile.flush()
             sox_in = pysox.CSoxStream(infile.name)
             sox_out = pysox.CSoxStream(outfile.name, 'w', sox_in.get_signal())
@@ -242,7 +242,7 @@ def optimize_windowsize(n):
     return orig_n
 
 
-def paulstretch(samples, ratio, windowsize_seconds=0.25, sample_rate=44100):
+def paulstretch(samples, ratio, windowsize_seconds=0.25, frame_rate=44100):
     """
     Paul's Extreme Sound Stretch (Paulstretch) - Python version
     
@@ -254,14 +254,14 @@ def paulstretch(samples, ratio, windowsize_seconds=0.25, sample_rate=44100):
     nsamples, nchannels = samples.shape[0], samples.shape[1]
 
     # make sure that windowsize is even and larger than 16
-    windowsize = int(windowsize_seconds * sample_rate)
+    windowsize = int(windowsize_seconds * frame_rate)
     if windowsize < 16: windowsize = 16
     windowsize = optimize_windowsize(windowsize)
     windowsize = int(windowsize/2) * 2
     half_windowsize = int(windowsize/2)
 
     # correct the end of the smp
-    end_size = int(sample_rate*0.05)
+    end_size = int(frame_rate*0.05)
     if end_size < 16: end_size=16
     samples[nsamples-end_size:nsamples,:] *= np.array([np.linspace(1, 0, end_size)]).transpose()
     

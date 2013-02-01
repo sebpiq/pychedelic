@@ -23,10 +23,10 @@ def samples_to_string(data):
     return data.astype(np.int16).tostring()
     
 
-def write_wav(f, data, sample_rate=44100):
+def write_wav(f, data, frame_rate=44100):
     fd = wave.open(f, mode='wb')
     fd.setsampwidth(2)
-    fd.setframerate(sample_rate)
+    fd.setframerate(frame_rate)
     if isinstance(data, types.GeneratorType):
         chunk = data.next()
         fd.setnchannels(chunk.shape[1])
@@ -52,7 +52,6 @@ def read_wav(f, start=None, end=None):
     if end is None: end_frame = raw.getnframes()
     else: end_frame = end * frame_rate
     frame_count = end_frame - start_frame
-    sample_count = frame_count * channels
 
     # Reading only the data between `start` and `end`,
     # putting this data to a numpy array 
@@ -62,7 +61,7 @@ def read_wav(f, start=None, end=None):
     data = data / float(2**15)
     data.astype(np.float32)
     data = data.reshape([frame_count, channels])
-    return data, {'sample_rate': frame_rate, 'channel_count': channels}
+    return data, {'frame_rate': frame_rate, 'channel_count': channels}
 
 
 def guess_fileformat(filename):

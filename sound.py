@@ -3,6 +3,7 @@ import subprocess
 import os
 import numpy as np
 import traceback
+import math
 
 import algorithms as algos
 from base_data_frames import PychedelicSampledDataFrame
@@ -33,7 +34,7 @@ class Sound(PychedelicSampledDataFrame):
         Returns the sound length in seconds.
         """
         # The first sample is at `x = 0`, so we take `sample count - 1`
-        return (self.sample_count - 1) / float(self.sample_rate)
+        return (self.frame_count - 1) / float(self.frame_rate)
 
     @property
     def echonest(self):
@@ -50,21 +51,59 @@ class Sound(PychedelicSampledDataFrame):
     def channel_count(self):
         return self.shape[1]
 
+    @classmethod
+    def mix(cls, *tracks):
+        # TODO: mono / stereo, ...
+        for track in tracks:
+            if not 'sound' in track:
+                raise ValueError('each track must contain a sound')
+        frame_rates = map(lambda t: t['sound'].frame_rate, tracks)
+        if len(set(frame_rates)) > 1:
+            raise ValueError('cannot mix sounds with different sample rates')
+        frame_rate = frame_rates[0]
+        duration = max([t.get('start', 0) + t['sound'].length for t in tracks])
+        duration = math.ceil(duration * frame_rate) / frame_rate
+        frame_count = round(duration * frame_rate) + 1
+
+        tracks_ready = []
+        for track in tracks:
+            start = track.get('start', 0)
+            start = math.ceil(start * frame_rate) / frame_rate
+            gain = track.get('gain', 1.0)
+            sound = track['sound']
+            chunks = []
+            if start > 0:
+                pad_before = math.floor(start * frame_rate)
+                chunks += [np.zeros((pad_before, sound.channel_count))]
+            chunks += [sound.values]
+            pad_after = frame_count - sum([c.shape[0] for c in chunks])
+            if pad_after > 0:
+                chunks += [np.zeros((pad_after, sound.channel_count))]
+            samples = reduce(lambda acc, chunk: np.append(acc, chunk, axis=0), chunks) * gain
+            tracks_ready.append(samples)
+
+        return cls(np.sum(tracks_ready, axis=0), frame_rate=frame_rate)
+            
+
     def channel(i):
         """
         Returns the channel `i`. This is 1-based. 
         """
         return self.icol(ind - 1)
 
-    def mix(self):
-        return Sound(self.sum(1), sample_rate=self.sample_rate)
-
-    def time_stretch(self, length):
+    def time_stretch(self, length=None, ratio=None, algorithm='paulstretch'):
         """
-        Stretch sound to `length`.
+        Stretch sound.
         """
-        ratio = self.length / length
-        return self._constructor(algos.time_stretch(self.values, ratio, sample_rate=self.sample_rate))
+        if length is None and ratio is None:
+            raise TypeError('you must provide at least ratio or length')
+        elif ratio is None: ratio = self.length / length 
+        if algorithm == 'sox':
+            return self._constructor(algos.time_stretch(self.values, ratio, frame_rate=self.frame_rate))
+        elif algorithm == 'paulstretch':
+            gen = algos.paulstretch(self.values, ratio, frame_rate=44100)
+            return self._constructor(reduce(lambda acc, chunk: np.append(acc, chunk, axis=0), gen))
+        else: raise ValueError('invalid algorithm %s' % algorithm)
 
     def pitch_shift_semitones(self, semitones):
         return self._constructor(algos.pitch_shift_semitones(self.values, semitones))
@@ -72,16 +111,16 @@ class Sound(PychedelicSampledDataFrame):
     def fade(self, in_dur=None, out_dur=None):
         # Calculate fade-in
         if in_dur is not None:
-            window_size = in_dur * self.sample_rate
+            window_size = in_dur * self.frame_rate
             fade = (np.exp(np.linspace(0, np.log(100), window_size)) - 1) / (100 - 1)
-            fade_in = np.ones(self.sample_count)
+            fade_in = np.ones(self.frame_count)
             fade_in[:len(fade)] = fade
 
         # Calculate fade-out
         if out_dur is not None:
-            window_size = out_dur * self.sample_rate
+            window_size = out_dur * self.frame_rate
             fade = (np.exp(np.linspace(0, np.log(100), window_size)) - 1) / (100 - 1)
-            fade_out = np.ones(self.sample_count)
+            fade_out = np.ones(self.frame_count)
             fade_out[-len(fade):] = fade[::-1]
 
         # Apply fades to all channels
@@ -99,17 +138,17 @@ class Sound(PychedelicSampledDataFrame):
         data, infos = read_wav(converted_filename, start=start, end=end)
         # If a temp filename was created for the conversion, remove it.
         if converted_filename != filename: os.remove(converted_filename)
-        sound = cls(data, sample_rate=infos['sample_rate'])
+        sound = cls(data, frame_rate=infos['frame_rate'])
         return sound
 
     def to_file(self, filename):
         fileformat = guess_fileformat(filename)
         if fileformat != 'wav':
             with NamedTemporaryFile(mode='wb', delete=True, suffix='.wav') as origin_file:
-                write_wav(origin_file, self.values, sample_rate=self.sample_rate)
+                write_wav(origin_file, self.values, frame_rate=self.frame_rate)
                 convert_file(origin_file.name, fileformat, to_filename=filename)
         else:
-            write_wav(filename, self.values, sample_rate=self.sample_rate)
+            write_wav(filename, self.values, frame_rate=self.frame_rate)
 
     def iter_raw(self, block_size=0):
         position = 0
@@ -129,10 +168,10 @@ class Sound(PychedelicSampledDataFrame):
         """
         from spectrum import Spectrum
         mixed_sound = self.mix()
-        window = algos.window(window_func, mixed_sound.sample_count)
-        freqs, results = algos.fft(mixed_sound[0] * window, self.sample_rate)
-        f_sample_rate = 1.0 / (freqs[1] - freqs[0])
-        return Spectrum(results, sample_rate=f_sample_rate)
+        window = algos.window(window_func, mixed_sound.frame_count)
+        freqs, results = algos.fft(mixed_sound[0] * window, self.frame_rate)
+        f_frame_rate = 1.0 / (freqs[1] - freqs[0])
+        return Spectrum(results, frame_rate=f_frame_rate)
 
     def get_spectrogram(self, **kwargs):
         # TODO: http://pandas.pydata.org/pandas-docs/stable/generated/pandas.stats.moments.rolling_apply.html#pandas.stats.moments.rolling_apply
@@ -145,7 +184,7 @@ class Sound(PychedelicSampledDataFrame):
         offset = 0
         # Rows are t, columns are f
         spectrogram_data = np.array([])
-        while(end < self.sample_count):
+        while(end < self.frame_count):
             sound_slice = self.ix[start:end]
             spectrum = sound_slice.get_spectrum()
             start = end - overlap
@@ -157,5 +196,5 @@ class Sound(PychedelicSampledDataFrame):
             if not spectrogram_data.size: vstack_data = (current_window,)
             else: vstack_data = (spectrogram_data, current_window)
             spectrogram_data = np.vstack(vstack_data)
-        spectrogram = Spectrogram(spectrogram_data, sample_rate=self.sample_rate, columns=spectrum.index)
+        spectrogram = Spectrogram(spectrogram_data, frame_rate=self.frame_rate, columns=spectrum.index)
         return spectrogram
