@@ -102,6 +102,15 @@ class Sound_Test(PychedelicTestCase):
         self.assertEqual(mixed.index, [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5])
         self.assertEqual(mixed.icol(0), [1, 2, 3, 4, 5, 6, 7, 8])
 
+    def concatenate_test(self):
+        sound1 = Sound([[1, 1], [2, 2], [3, 3]], frame_rate=2)
+        sound2 = Sound([[4, 4], [5, 5]], frame_rate=2)
+        sound3 = Sound([[6, 6], [7, 7], [8, 8]], frame_rate=2)
+        sound = Sound.concatenate(sound1, sound2, sound3)
+        self.assertEqual(sound.channel_count, 2)
+        self.assertEqual(sound.frame_rate, 2)
+        self.assertEqual(sound.values, [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6], [7, 7], [8, 8]])
+
     def time_stretch_test(self):
         # length : 0.010
         sound = Sound.from_file(A440_MONO_16B)

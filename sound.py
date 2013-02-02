@@ -80,13 +80,22 @@ class Sound(PychedelicSampledDataFrame):
             remaining_frames = frame_count - sum([c.shape[0] for c in chunks])
             if remaining_frames > 0:
                 chunks += [np.zeros((remaining_frames, sound.channel_count))]
-            samples = reduce(lambda acc, chunk: np.append(acc, chunk, axis=0), chunks) * gain
+            samples = np.concatenate(chunks, axis=0) * gain
             if track_channels < channel_count:
                 samples = np.tile(samples, (1, channel_count))
             tracks_ready.append(samples)
 
         return cls(np.sum(tracks_ready, axis=0), frame_rate=frame_rate)
-            
+
+    @classmethod
+    def concatenate(cls, *sounds):
+        frame_rates = [s.frame_rate for s in sounds]
+        if len(set(frame_rates)) > 1:
+            raise ValueError('all sounds must have the same frame rate')
+        if len(set([s.channel_count for s in sounds])) > 1:
+            raise ValueError('all sounds must have the number of channels')
+        return cls(np.concatenate(sounds, axis=0), frame_rate=frame_rates[0])
+
     def to_mono(self):
         return self._constructor(self.sum(1))
 
@@ -107,7 +116,7 @@ class Sound(PychedelicSampledDataFrame):
             return self._constructor(algos.time_stretch(self.values, ratio, frame_rate=self.frame_rate))
         elif algorithm == 'paulstretch':
             gen = algos.paulstretch(self.values, ratio, frame_rate=44100)
-            return self._constructor(reduce(lambda acc, chunk: np.append(acc, chunk, axis=0), gen))
+            return self._constructor(np.concatenate(list(gen), axis=0))
         else: raise ValueError('invalid algorithm %s' % algorithm)
 
     def pitch_shift_semitones(self, semitones):
