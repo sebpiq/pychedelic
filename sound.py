@@ -52,8 +52,8 @@ class Sound(PychedelicSampledDataFrame):
         return self.shape[1]
 
     @classmethod
-    def mix(cls, *tracks):
-        # TODO: mono / stereo, ...
+    def mix(cls, *tracks, **params):
+        # TODO: mix track with N channels to final M channels
         for track in tracks:
             if not 'sound' in track:
                 raise ValueError('each track must contain a sound')
@@ -64,26 +64,31 @@ class Sound(PychedelicSampledDataFrame):
         duration = max([t.get('start', 0) + t['sound'].length for t in tracks])
         duration = math.ceil(duration * frame_rate) / frame_rate
         frame_count = round(duration * frame_rate) + 1
+        channel_count = 2#params.get('channel_count', 2)
 
         tracks_ready = []
         for track in tracks:
             start = track.get('start', 0)
-            start = math.ceil(start * frame_rate) / frame_rate
+            start_frame = math.ceil(start * frame_rate)
             gain = track.get('gain', 1.0)
             sound = track['sound']
+            track_channels = sound.channel_count
             chunks = []
-            if start > 0:
-                pad_before = math.floor(start * frame_rate)
-                chunks += [np.zeros((pad_before, sound.channel_count))]
+            if start_frame > 0:
+                chunks += [np.zeros((start_frame, sound.channel_count))]
             chunks += [sound.values]
-            pad_after = frame_count - sum([c.shape[0] for c in chunks])
-            if pad_after > 0:
-                chunks += [np.zeros((pad_after, sound.channel_count))]
+            remaining_frames = frame_count - sum([c.shape[0] for c in chunks])
+            if remaining_frames > 0:
+                chunks += [np.zeros((remaining_frames, sound.channel_count))]
             samples = reduce(lambda acc, chunk: np.append(acc, chunk, axis=0), chunks) * gain
+            if track_channels < channel_count:
+                samples = np.tile(samples, (1, channel_count))
             tracks_ready.append(samples)
 
         return cls(np.sum(tracks_ready, axis=0), frame_rate=frame_rate)
             
+    def to_mono(self):
+        return self._constructor(self.sum(1))
 
     def channel(i):
         """
@@ -167,7 +172,7 @@ class Sound(PychedelicSampledDataFrame):
         Returns the spectrum of the signal `data(x, v)`. Negative spectrum is removed.
         """
         from spectrum import Spectrum
-        mixed_sound = self.mix()
+        mixed_sound = self.to_mono()
         window = algos.window(window_func, mixed_sound.frame_count)
         freqs, results = algos.fft(mixed_sound[0] * window, self.frame_rate)
         f_frame_rate = 1.0 / (freqs[1] - freqs[0])

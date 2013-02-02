@@ -77,14 +77,39 @@ class Sound_Test(PychedelicTestCase):
         self.assertEqual(mixed.frame_count, 5)
         self.assertEqual(mixed.values, [[2, 2], [2.5, 2.5], [2.75, 2.75], [0.75, 0.75], [0.25, 0.25]])
 
+        # Mix mono to stereo
+        sound1 = Sound([[1], [1], [1]], frame_rate=2)
+        sound2 = Sound([[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]], frame_rate=2)
+        mixed = Sound.mix(
+            {'sound': sound1},
+            {'sound': sound2, 'start': 0.1},
+        )
+        self.assertEqual(mixed.length, 1.5)
+        self.assertEqual(mixed.frame_rate, 2)
+        self.assertEqual(mixed.frame_count, 4)
+        self.assertEqual(mixed.values, [[1, 1], [1.5, 1.5], [1.5, 1.5], [0.5, 0.5]])
+
+    def to_mono_test(self):
+        sound = Sound([[1, 0.5, 0.5], [2, 0.4, 0.4], [3, 0.3, 0.3], [4, 0.2, 0.2], [5, 0.1, 0.1], [6, 0, 0], [7, -0.1, -0.1], [8, -0.2, -0.2]], frame_rate=2)
+        mixed = sound.to_mono()
+        self.assertTrue(isinstance(mixed, Sound))
+        self.assertEqual(mixed.index, [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5])
+        self.assertEqual(np.round(mixed.icol(0), 4), np.round([2.0, 2.8, 3.6, 4.4, 5.2, 6.0, 6.8, 7.6], 4))
+
+        sound = Sound([[1], [2], [3], [4], [5], [6], [7], [8]], frame_rate=2)
+        mixed = sound.to_mono()
+        self.assertTrue(isinstance(mixed, Sound))
+        self.assertEqual(mixed.index, [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5])
+        self.assertEqual(mixed.icol(0), [1, 2, 3, 4, 5, 6, 7, 8])
+
     def time_stretch_test(self):
         # length : 0.010
         sound = Sound.from_file(A440_MONO_16B)
 
-        stretched = sound.time_stretch(0.005)
+        stretched = sound.time_stretch(0.005, algorithm='sox')
         self.assertEqual(np.round(stretched.length, 4), 0.005)
 
-        stretched = sound.time_stretch(0.003)
+        stretched = sound.time_stretch(0.003, algorithm='sox')
         self.assertEqual(np.round(stretched.length, 4), 0.003)
 
     def pitch_shift_semitones_test(self):
