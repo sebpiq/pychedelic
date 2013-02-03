@@ -88,6 +88,63 @@ class Sound(PychedelicSampledDataFrame):
         return cls(np.sum(tracks_ready, axis=0), frame_rate=frame_rate)
 
     @classmethod
+    def iter_mix(cls, *tracks, **params):
+        block_size = params.get('block_size', 44100)
+        buffers = [[] for i in range(len(tracks))]
+        # TODO: forbid stuff like 'start' attribute for tracks
+        out_tracks = [t.copy() for t in tracks]
+        while True:
+            # First, for each track, fill-in the buffer.
+            # If all tracks raise `StopIteration`, we're done.
+            finished = 0
+            for i, buf in enumerate(buffers):
+                size = sum([s.shape[0] for s in buf])
+                while size < block_size:
+                    try:
+                        sound = tracks[i]['sound'].next()
+                    except StopIteration:
+                        sound = block_size - size
+                        finished += 1
+                        buf.append(sound)
+                        break
+                    buf.append(sound)
+                    size += sound.shape[0]
+            if finished == len(tracks): return
+            
+            # Second, concatenate and mix the sounds from `buffers`
+            for i, buf in enumerate(buffers):
+                # All sounds but the last one are ready to be concatenated
+                # in one block.
+                sounds = []
+                for sound in buf[:-1]:
+                    sound = buf.pop(0)
+                    sounds.append(sound)
+                
+                # The last sound might need to be cut in the middle if too long.
+                offset = block_size - sum([s.shape[0] for s in sounds])
+                sound = buf.pop(0)
+                if not isinstance(sound, int):
+                    if offset < sound.shape[0]:
+                        buf.append(sound[offset:])
+                        sound = sound[:offset]
+                    sounds.append(sound)
+
+                # Now, replace all ints by zeros, and concatenates the
+                # whole thing, ready to be mixed.
+                try:
+                    ref = filter(lambda s: hasattr(s, 'shape'), sounds)[0]
+                except IndexError:
+                    channel_count = 1
+                else:
+                    channel_count = ref.channel_count
+                for j, sound in enumerate(sounds):
+                    if isinstance(sound, int): sounds[j] = np.zeros((sound, channel_count))
+                print ' '* i, sounds
+                out_tracks[i]['sound'] = Sound.concatenate(*sounds)
+            print ''
+            yield Sound.mix(*out_tracks, **params)
+
+    @classmethod
     def concatenate(cls, *sounds):
         frame_rates = [s.frame_rate for s in sounds]
         if len(set(frame_rates)) > 1:
@@ -165,6 +222,10 @@ class Sound(PychedelicSampledDataFrame):
             write_wav(filename, self.values, frame_rate=self.frame_rate)
 
     def iter_raw(self, block_size=0):
+        #TODO: block_size should rather be the actual block size.
+        """
+        `block_size` is the amount of samples in each block
+        """
         position = 0
         samp_count = self.shape[0]
         if block_size == 0: block_size = samp_count

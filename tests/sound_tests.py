@@ -89,6 +89,32 @@ class Sound_Test(PychedelicTestCase):
         self.assertEqual(mixed.frame_count, 4)
         self.assertEqual(mixed.values, [[1, 1], [1.5, 1.5], [1.5, 1.5], [0.5, 0.5]])
 
+    def iter_mix_test(self):
+        def gen1():
+            yield Sound(np.ones((9, 1)), frame_rate=2)
+        def gen2():
+            for i in range(5):
+                yield Sound(np.ones((2, 2)) * 0.5, frame_rate=2)
+        def gen3():
+            for i in range(6):
+                yield Sound([[0.25, 0.25]], frame_rate=2)
+            yield Sound(np.ones((5, 2)) * 0.25, frame_rate=2)
+        mixed_iter = Sound.iter_mix(
+            {'sound': gen1(), 'gain': 3},
+            {'sound': gen2()},
+            {'sound': gen3()},
+        block_size=2)
+
+        result = [block for block in mixed_iter]
+        self.assertEqual([b.values for b in result], [
+            [[3.75, 3.75], [3.75, 3.75]],
+            [[3.75, 3.75], [3.75, 3.75]],
+            [[3.75, 3.75], [3.75, 3.75]],
+            [[3.75, 3.75], [3.75, 3.75]],
+            [[3.75, 3.75], [0.75, 0.75]],
+            [[0.25, 0.25], [0, 0]],
+        ])
+
     def to_mono_test(self):
         sound = Sound([[1, 0.5, 0.5], [2, 0.4, 0.4], [3, 0.3, 0.3], [4, 0.2, 0.2], [5, 0.1, 0.1], [6, 0, 0], [7, -0.1, -0.1], [8, -0.2, -0.2]], frame_rate=2)
         mixed = sound.to_mono()
