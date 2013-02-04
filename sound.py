@@ -93,7 +93,9 @@ class Sound(PychedelicSampledDataFrame):
         buffers = [[] for i in range(len(tracks))]
         # TODO: forbid stuff like 'start' attribute for tracks
         out_tracks = [t.copy() for t in tracks]
-        while True:
+        frame_rate = None
+        data_available = True
+        while data_available:
             # First, for each track, fill-in the buffer.
             # If all tracks raise `StopIteration`, we're done.
             finished = 0
@@ -107,36 +109,39 @@ class Sound(PychedelicSampledDataFrame):
                         finished += 1
                         buf.append(sound)
                         break
+                    else:
+                        if frame_rate is None:
+                            frame_rate = sound.frame_rate
                     buf.append(sound)
                     size += sound.shape[0]
-            if finished == len(tracks): return
+            if finished == len(tracks): data_available = False
             
             # Second, concatenate and mix the sounds from `buffers`
             for i, buf in enumerate(buffers):
                 # All sounds but the last one are ready to be concatenated
                 # in one block.
                 sounds = []
+                sound = None
                 for sound in buf[:-1]:
                     sound = buf.pop(0)
                     sounds.append(sound)
+
+                # Getting the channel count, relying on the fact that
+                # only the last element in `buf` can be zeros.
+                if sound is not None: channel_count = sound.shape[1]
+                else: channel_count = 1
                 
                 # The last sound might need to be cut in the middle if too long.
                 offset = block_size - sum([s.shape[0] for s in sounds])
                 sound = buf.pop(0)
-                if not isinstance(sound, int):
-                    if offset < sound.shape[0]:
-                        buf.append(sound[offset:])
-                        sound = sound[:offset]
-                    sounds.append(sound)
+                if isinstance(sound, int):
+                    sound = Sound(np.zeros((sound, channel_count)), frame_rate=frame_rate)
+                elif offset < sound.shape[0]:
+                    buf.append(sound[offset:]) # Add the remainder to `buf`
+                    sound = sound[:offset]
+                sounds.append(sound)
 
-                # Now, replace all ints by zeros, and concatenates the
-                # whole thing, ready to be mixed.
-                try:
-                    ref = filter(lambda s: hasattr(s, 'shape'), sounds)[0]
-                except IndexError:
-                    channel_count = 1
-                else:
-                    channel_count = ref.channel_count
+                # Now, concatenates the whole thing, ready to be mixed.
                 for j, sound in enumerate(sounds):
                     if isinstance(sound, int): sounds[j] = np.zeros((sound, channel_count))
                 print ' '* i, sounds

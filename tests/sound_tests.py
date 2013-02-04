@@ -106,14 +106,14 @@ class Sound_Test(PychedelicTestCase):
         block_size=2)
 
         result = [block for block in mixed_iter]
-        self.assertEqual([b.values for b in result], [
+        self.assertEqual(np.array([b.values for b in result]), np.array([
             [[3.75, 3.75], [3.75, 3.75]],
             [[3.75, 3.75], [3.75, 3.75]],
             [[3.75, 3.75], [3.75, 3.75]],
             [[3.75, 3.75], [3.75, 3.75]],
             [[3.75, 3.75], [0.75, 0.75]],
             [[0.25, 0.25], [0, 0]],
-        ])
+        ]))
 
     def to_mono_test(self):
         sound = Sound([[1, 0.5, 0.5], [2, 0.4, 0.4], [3, 0.3, 0.3], [4, 0.2, 0.2], [5, 0.1, 0.1], [6, 0, 0], [7, -0.1, -0.1], [8, -0.2, -0.2]], frame_rate=2)
