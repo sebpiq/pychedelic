@@ -12,16 +12,28 @@ import subprocess
 import types
 
 
-def samples_to_string(data):
+def samples_to_string(samples):
     """
     Takes a float32 numpy array, containing audio data in the range [-1, 1],
     returns the equivalent wav byte string.
-    `data` can be stereo, mono, or a one-dimensional array (thus mono).
+    `samples` can be stereo, mono, or a one-dimensional array (thus mono).
     """
-    data = data.astype(np.float32) * 2**15
-    data = data.clip(-2**15, 2**15 - 1)
-    return data.astype(np.int16).tostring()
+    samples = samples.astype(np.float32) * 2**15
+    samples = samples.clip(-2**15, 2**15 - 1)
+    return samples.astype(np.int16).tostring()
     
+
+def string_to_samples(string, channel_count):
+    """
+    Takes a byte string of raw PCM data and returns a numpy array containing
+    audio data in range [-1, 1].
+    """
+    samples = np.fromstring(string, dtype='int16')
+    samples = samples / float(2**15)
+    samples.astype(np.float32)
+    frame_count = samples.size / channel_count
+    return samples.reshape([frame_count, channel_count])
+
 
 def write_wav(f, data, frame_rate=44100):
     fd = wave.open(f, mode='wb')
@@ -57,10 +69,7 @@ def read_wav(f, start=None, end=None):
     # putting this data to a numpy array 
     raw.setpos(int(start_frame))
     data = raw.readframes(int(frame_count))
-    data = np.fromstring(data, dtype='int16')
-    data = data / float(2**15)
-    data.astype(np.float32)
-    data = data.reshape([frame_count, channels])
+    data = string_to_samples(data)
     return data, {'frame_rate': frame_rate, 'channel_count': channels}
 
 
