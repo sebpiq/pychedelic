@@ -28,6 +28,7 @@ def string_to_samples(string, channel_count):
     Takes a byte string of raw PCM data and returns a numpy array containing
     audio data in range [-1, 1].
     """
+    # TODO: test
     samples = np.fromstring(string, dtype='int16')
     samples = samples / float(2**15)
     samples.astype(np.float32)
