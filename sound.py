@@ -142,16 +142,15 @@ class Sound(PychedelicSampledDataFrame):
                 sounds.append(sound)
 
                 # Now, concatenates the whole thing, ready to be mixed.
-                for j, sound in enumerate(sounds):
-                    if isinstance(sound, int): sounds[j] = np.zeros((sound, channel_count))
-                print ' '* i, sounds
                 out_tracks[i]['sound'] = Sound.concatenate(*sounds)
-            print ''
             yield Sound.mix(*out_tracks, **params)
 
     @classmethod
     def concatenate(cls, *sounds):
-        frame_rates = [s.frame_rate for s in sounds]
+        try:
+            frame_rates = [s.frame_rate for s in sounds]
+        except Exception:
+            import pdb; pdb.set_trace()
         if len(set(frame_rates)) > 1:
             raise ValueError('all sounds must have the same frame rate')
         if len(set([s.channel_count for s in sounds])) > 1:
@@ -177,8 +176,7 @@ class Sound(PychedelicSampledDataFrame):
         if algorithm == 'sox':
             return self._constructor(algos.time_stretch(self.values, ratio, frame_rate=self.frame_rate))
         elif algorithm == 'paulstretch':
-            gen = algos.paulstretch(self.values, ratio, frame_rate=44100)
-            return self._constructor(np.concatenate(list(gen), axis=0))
+            return algos.paulstretch(self.values, ratio, frame_rate=44100)
         else: raise ValueError('invalid algorithm %s' % algorithm)
 
     def pitch_shift_semitones(self, semitones):
