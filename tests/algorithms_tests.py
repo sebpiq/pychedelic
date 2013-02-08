@@ -152,8 +152,10 @@ class Algorithms_Test(PychedelicTestCase):
         '''
         raw_sound = Sound.from_file(os.path.join(dirname, 'sounds/paulstretch_test_raw.wav'))
         test_sound = Sound.from_file(os.path.join(dirname, 'sounds/paulstretch_test_stretched.wav'))
-        stretched = paulstretch(raw_sound.values, 8.0, frame_rate=frame_rate, windowsize_seconds=0.1)
-        stretched_sound = Sound(reduce(lambda acc, c: np.append(acc, c, axis=0), stretched), frame_rate=frame_rate)
+        print 'RAW', raw_sound.shape
+        stretched = paulstretch(iter([raw_sound.values]), 8.0, frame_rate=frame_rate, block_size=0.1*44100, nsamples=raw_sound.frame_count)
+        stretched_sound = Sound(np.concatenate(list(stretched), axis=0), frame_rate=frame_rate)
+        print stretched_sound.length
 
         if plot_opt:
             #fig, axes = pylab.subplots(nrows=3, ncols=1)

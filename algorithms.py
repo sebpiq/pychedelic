@@ -7,6 +7,7 @@ import pandas as pnd
 import pysox
 
 from utils.files import read_wav, write_wav
+from utils.stream import reblock
 
 
 def fft(samples, frame_rate):
@@ -227,7 +228,7 @@ def time_stretch(samples, ratio, frame_rate=44100):
     return data
 
 
-def optimize_windowsize(n):
+def optimize_block_size(n):
     orig_n=n
     while True:
         n=orig_n
@@ -244,6 +245,64 @@ def optimize_windowsize(n):
     return orig_n
 
 
+def paulstretch(samples, ratio, block_size=None, frame_rate=44100, nchannels=1, nsamples=0):
+    """
+    Paul's Extreme Sound Stretch (Paulstretch) - Python version
+    
+    by Nasca Octavian PAUL, Targu Mures, Romania
+    
+    https://github.com/paulnasca/paulstretch_python
+    http://hypermammut.sourceforge.net/paulstretch/
+    """
+    #nsamples, nchannels = samples.shape[0], samples.shape[1]
+
+    # make sure that block_size is even and larger than 16
+    block_size = block_size or frame_rate / 4
+    block_size = max(16, block_size)
+    block_size = optimize_block_size(block_size)
+    block_size = int(block_size/2) * 2
+    half_block_size = int(block_size/2)
+
+    # correct the end of the smp
+    end_size = int(frame_rate*0.05)
+    if end_size < 16: end_size=16
+    #samples[nsamples-end_size:nsamples,:] *= np.array([np.linspace(1, 0, end_size)]).transpose()
+
+    # create Window window
+    window = pow(1.0 - pow(np.linspace(-1.0, 1.0, block_size), 2.0), 1.25)
+    window = np.array([window]).transpose()
+    old_windowed_buf = np.zeros((block_size, nchannels))
+
+    for block in reblock(samples, block_size, when_exhausted='pad'):
+        print block.shape, block_size
+        # get the windowed buffer
+        buf = block * window
+    
+        # get the amplitudes of the frequency components and discard the phases
+        freqs = abs(np.fft.rfft(buf, axis=0))
+
+        # randomize the phases by multiplication with a random complex number with modulus=1
+        ph = np.random.uniform(0, 2*np.pi, (freqs.shape[0], nchannels)) * 1j
+        freqs = freqs * np.exp(ph)
+
+        # do the inverse FFT 
+        buf = np.fft.irfft(freqs, axis=0)
+
+        # window again the output buffer
+        buf *= window
+
+        # overlap-add the output
+        output = buf[0:half_block_size,:] + old_windowed_buf[half_block_size:block_size,:]
+        old_windowed_buf = buf
+
+        print 'OUT', output.shape
+        # remove the resulted amplitude modulation
+        # update: there is no need to the new windowing function
+        yield output
+
+
+
+'''
 def paulstretch(samples, ratio, windowsize_seconds=0.25, frame_rate=44100):
     """
     Paul's Extreme Sound Stretch (Paulstretch) - Python version
@@ -306,6 +365,9 @@ def paulstretch(samples, ratio, windowsize_seconds=0.25, frame_rate=44100):
         yield output
 
         start_pos += displace_pos
+'''
+
+
 
 
 def calculate_replaygain(samples, frame_rate=44100):
