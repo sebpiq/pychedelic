@@ -171,6 +171,13 @@ class Algorithms_Test(PychedelicTestCase):
             test_sound.ix[:,0].plot()
             
             pylab.show()
+    
+    def calculate_replaygain_test(self):
+        from pychedelic import Sound
+        #sound = Sound.from_file('tests/sounds/directions.mp3')[441000:]
+        sound = Sound.from_file('tests/sounds/A440_stereo_16B.wav')
+        ret = calculate_replaygain(sound.values.astype(np.float64), frame_rate=sound.frame_rate)
+        print "Recommended gain: %f dB" % ret
 
     def smooth_test(self):
         # TODO: test

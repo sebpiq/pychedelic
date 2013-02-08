@@ -7,19 +7,15 @@ from utils.files import string_to_samples, samples_to_string
 
 class BaseNode(object):
 
+    def __init__(self):
+        self.buffer = []
+        self.exhausted = False
+
     def __iter__(self):
         return self
 
     def next(self):
         raise NotImplementedError()
-
-
-class AudioOutMixin(object):
-
-    def __init__(self, block_size=0):
-        self.block_size = block_size
-        self.buffer = []
-        self.exhausted = False
 
     def next(self):
         if self.exhausted: raise StopIteration()
@@ -51,8 +47,11 @@ class AudioOutMixin(object):
         self.buffer = new_buffer
         return block
 
-    def block(self):
-        raise NotImplementedError()
+
+class AudioOutMixin(object):
+
+    def __init__(self):
+        pass
 
 
 class AudioInMixin(object):

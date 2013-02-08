@@ -1,6 +1,7 @@
 from tempfile import NamedTemporaryFile
 import math
 import numpy as np
+from scipy import signal
 import pandas as pnd
 import pysox
 
@@ -304,6 +305,121 @@ def paulstretch(samples, ratio, windowsize_seconds=0.25, frame_rate=44100):
         yield output
 
         start_pos += displace_pos
+
+
+def calculate_replaygain(samples, frame_rate=44100, ref_Vrms=83 - 24.73):
+    """
+    Determine the gain to apply to `samples` so that their perceived
+    loudness would be `ref_Vrms` decibels.
+
+    METHOD:
+    1) Calculate Vrms every 50ms
+    2) Sort in ascending order of loudness
+    3) The value which most accurately matches perceived loudness is around 95% of the max,
+        so this value is used by Replay Level.
+    4) Convert this value into dB
+    5) Subtract it from that calculated for -20dB FS RMS pink noise
+    Result = required correction to replay gain (relative to 83dB reference)
+
+    David Robinson, 10th July 2001. http://www.David.Robinson.org/
+    ref : http://replaygain.hydrogenaudio.org/calculating_rg.html
+    Ported to Python by Sébastien Piquemal <sebpiq@gmail.com>
+    """
+    channel_count = samples.shape[1]
+    frame_count = samples.shape[0]
+    try:
+        coeffs = RG_FILTER_COEFFS[frame_rate]
+    except KeyError:
+        raise ValueError('frame rate %s is not supported' % frame_rate)
+    a1, b1, a2, b2 = coeffs['a1'], coeffs['b1'], coeffs['a2'], coeffs['b2']
+
+    # Window for Vrms calculation (50ms)
+    rms_window_size = np.round(50 * (frame_rate/1000.0))
+    rms_per_block = 20
+    block_size = np.round(rms_per_block * rms_window_size)
+
+    # Check that the file is long enough to process in block_size blocks
+    if frame_count < block_size:
+        raise ValueError('file too short')
+
+    # Loop through all the file in blocks a defined above
+    i = 0
+    Vrms_all = []
+    while i*block_size < frame_count:
+        # Grab a section of audio and filter it using the equal
+        # loudness curve filter
+        inaudio = samples[i*block_size:(i+1)*block_size,:]
+        inaudio = signal.lfilter(b1, a1, inaudio, axis=0);
+        inaudio = signal.lfilter(b2, a2, inaudio, axis=0);
+
+        # Calculate Vrms: take a 50ms block, calculate the mean of RMS of each channel
+        for j in range(rms_per_block):
+            rms_block = inaudio[j*rms_window_size:(j+1)*rms_window_size,:]
+            if rms_block.shape[0] < rms_window_size: break # if there's not enough data left
+            import warnings
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                Vrms_all.append(np.power(rms_block, 2).mean(axis=0).mean())
+                if len(w):# and 'invalid value' in w[0].message:
+                    import pdb; pdb.set_trace()
+        i += 1
+
+    # `10*log10(signal)` is the same as `20*log10(square_root(signal))`,
+    # so this does both the square root and the conversion to dB.
+    # We add 10**-10 simply to prevent calculation of log(0).
+    Vrms_all = 10 * np.log10(np.array(Vrms_all) + 10**-10)
+
+    # Pick the value at 95%, calculate difference to reference and returns.
+    Vrms_all.sort()
+    calc_Vrms = Vrms_all[round(Vrms_all.shape[0]*0.95)]
+    return ref_Vrms - calc_Vrms
+
+
+RG_FILTER_COEFFS = {
+
+    44100: {
+
+        'a1': [
+            1.00000000000000,
+            -3.47845948550071,
+            6.36317777566148,
+            -8.54751527471874,
+            9.47693607801280,
+            -8.81498681370155,
+            6.85401540936998,
+            -4.39470996079559,
+            2.19611684890774,
+            -0.75104302451432,
+            0.13149317958808,
+        ],
+
+        'b1': [
+            0.05418656406430,
+            -0.02911007808948,
+            -0.00848709379851,
+            -0.00851165645469,
+            -0.00834990904936,
+            0.02245293253339,
+            -0.02596338512915,
+            0.01624864962975,
+            -0.00240879051584,
+            0.00674613682247,
+            -0.00187763777362,
+        ],
+
+        'a2': [
+            1.00000000000000,
+            -1.96977855582618,
+            0.97022847566350,
+        ],
+
+        'b2': [
+            0.98500175787242,
+            -1.97000351574484,
+            0.98500175787242,
+        ]
+    }
+}
 
 
 def interleaved(samples):

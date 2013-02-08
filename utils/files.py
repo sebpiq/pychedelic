@@ -25,7 +25,7 @@ def samples_to_string(samples):
 
 def string_to_samples(string, channel_count):
     """
-    Takes a byte string of raw PCM data and returns a numpy array containing
+    Takes a byte string of raw PCM data and returns a float32 numpy array containing
     audio data in range [-1, 1].
     """
     # TODO: test
@@ -37,6 +37,11 @@ def string_to_samples(string, channel_count):
 
 
 def write_wav(f, data, frame_rate=44100):
+    """
+    Writes audio data to a wav file.
+    `f` can be an open file object or a filename.
+    `data` can be a numpy array or a generator yielding numpy arrays.
+    """
     fd = wave.open(f, mode='wb')
     fd.setsampwidth(2)
     fd.setframerate(frame_rate)
@@ -53,7 +58,7 @@ def write_wav(f, data, frame_rate=44100):
 def read_wav(f, start=None, end=None):
     # Opening the file and getting infos
     raw = wave.open(f, 'rb')
-    channels = raw.getnchannels()
+    channel_count = raw.getnchannels()
     sample_width = raw.getsampwidth()       # Sample width in byte
     if sample_width != 2: raise ValueError('Wave format not supported')
     frame_rate = raw.getframerate()
@@ -70,8 +75,8 @@ def read_wav(f, start=None, end=None):
     # putting this data to a numpy array 
     raw.setpos(int(start_frame))
     data = raw.readframes(int(frame_count))
-    data = string_to_samples(data)
-    return data, {'frame_rate': frame_rate, 'channel_count': channels}
+    data = string_to_samples(data, channel_count)
+    return data, {'frame_rate': frame_rate, 'channel_count': channel_count}
 
 
 def guess_fileformat(filename):
