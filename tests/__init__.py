@@ -26,3 +26,6 @@ class PychedelicTestCase(unittest.TestCase):
             return self.assertTrue(ma.all())
         else:
             return super(PychedelicTestCase, self).assertEqual(first, second)
+
+    def blocks_to_list(self, blocks):
+        return [[[samp for samp in frame] for frame in block] for block in blocks]
