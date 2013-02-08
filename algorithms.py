@@ -307,10 +307,9 @@ def paulstretch(samples, ratio, windowsize_seconds=0.25, frame_rate=44100):
         start_pos += displace_pos
 
 
-def calculate_replaygain(samples, frame_rate=44100, ref_Vrms=83 - 24.73):
+def calculate_replaygain(samples, frame_rate=44100):
     """
-    Determine the gain to apply to `samples` so that their perceived
-    loudness would be `ref_Vrms` decibels.
+    Determine the replay gain (perceived loudness) of `samples` in dB.
 
     METHOD:
     1) Calculate Vrms every 50ms
@@ -318,8 +317,6 @@ def calculate_replaygain(samples, frame_rate=44100, ref_Vrms=83 - 24.73):
     3) The value which most accurately matches perceived loudness is around 95% of the max,
         so this value is used by Replay Level.
     4) Convert this value into dB
-    5) Subtract it from that calculated for -20dB FS RMS pink noise
-    Result = required correction to replay gain (relative to 83dB reference)
 
     David Robinson, 10th July 2001. http://www.David.Robinson.org/
     ref : http://replaygain.hydrogenaudio.org/calculating_rg.html
@@ -356,12 +353,7 @@ def calculate_replaygain(samples, frame_rate=44100, ref_Vrms=83 - 24.73):
         for j in range(rms_per_block):
             rms_block = inaudio[j*rms_window_size:(j+1)*rms_window_size,:]
             if rms_block.shape[0] < rms_window_size: break # if there's not enough data left
-            import warnings
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter("always")
-                Vrms_all.append(np.power(rms_block, 2).mean(axis=0).mean())
-                if len(w):# and 'invalid value' in w[0].message:
-                    import pdb; pdb.set_trace()
+            Vrms_all.append(np.power(rms_block, 2).mean(axis=0).mean())
         i += 1
 
     # `10*log10(signal)` is the same as `20*log10(square_root(signal))`,
@@ -372,52 +364,23 @@ def calculate_replaygain(samples, frame_rate=44100, ref_Vrms=83 - 24.73):
     # Pick the value at 95%, calculate difference to reference and returns.
     Vrms_all.sort()
     calc_Vrms = Vrms_all[round(Vrms_all.shape[0]*0.95)]
-    return ref_Vrms - calc_Vrms
+    return calc_Vrms
 
 
 RG_FILTER_COEFFS = {
-
     44100: {
-
         'a1': [
-            1.00000000000000,
-            -3.47845948550071,
-            6.36317777566148,
-            -8.54751527471874,
-            9.47693607801280,
-            -8.81498681370155,
-            6.85401540936998,
-            -4.39470996079559,
-            2.19611684890774,
-            -0.75104302451432,
-            0.13149317958808,
+            1.00000000000000, -3.47845948550071, 6.36317777566148, -8.54751527471874,
+            9.47693607801280, -8.81498681370155, 6.85401540936998, -4.39470996079559,
+            2.19611684890774, -0.75104302451432, 0.13149317958808,
         ],
-
         'b1': [
-            0.05418656406430,
-            -0.02911007808948,
-            -0.00848709379851,
-            -0.00851165645469,
-            -0.00834990904936,
-            0.02245293253339,
-            -0.02596338512915,
-            0.01624864962975,
-            -0.00240879051584,
-            0.00674613682247,
-            -0.00187763777362,
+            0.05418656406430, -0.02911007808948, -0.00848709379851, -0.00851165645469,
+            -0.00834990904936, 0.02245293253339, -0.02596338512915, 0.01624864962975,
+            -0.00240879051584, 0.00674613682247, -0.00187763777362,
         ],
-
-        'a2': [
-            1.00000000000000,
-            -1.96977855582618,
-            0.97022847566350,
-        ],
-
-        'b2': [
-            0.98500175787242,
-            -1.97000351574484,
-            0.98500175787242,
-        ]
+        'a2': [1.00000000000000, -1.96977855582618, 0.97022847566350],
+        'b2': [0.98500175787242, -1.97000351574484, 0.98500175787242],
     }
 }
 
