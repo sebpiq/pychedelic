@@ -1,11 +1,11 @@
-import scipy.io.wavfile as sp_wavfile
-import numpy as np
+import types
 from tempfile import NamedTemporaryFile
 
+import scipy.io.wavfile as sp_wavfile
+import numpy as np
+
 from pychedelic.utils.files import read_wav, write_wav
-
 from __init__ import PychedelicTestCase, A440_MONO_16B, A440_STEREO_16B, A440_MONO_MP3
-
 
 
 class read_write_wave_Test(PychedelicTestCase):
@@ -24,7 +24,7 @@ class read_write_wave_Test(PychedelicTestCase):
         self.assertEqual(infos['frame_rate'], 44100)
         self.assertEqual(infos['channel_count'], 2)
         # Sanity check
-        frame_rate, samples_test = sp_wavfile.read(A440_STEREO_16B)
+        frame_rate, samples_test = sp_wavfile.read(open(A440_STEREO_16B, 'r'))
         self.assertEqual(samples[:10,:].round(4), (samples_test[:10,:] / float(2**15)).round(4))
 
         # Read only a segment of the file
@@ -49,6 +49,24 @@ class read_write_wave_Test(PychedelicTestCase):
         self.assertEqual(samples.shape, (264, 1))
         self.assertEqual(infos['frame_rate'], 44100)
         self.assertEqual(infos['channel_count'], 1)
+
+        # Omitting `start`
+        samples, infos = read_wav(A440_MONO_16B, end=0.006)
+        self.assertEqual(samples.shape, (264, 1))
+        self.assertEqual(infos['frame_rate'], 44100)
+        self.assertEqual(infos['channel_count'], 1)
+
+        # Returning a generator
+        blocks, infos = read_wav(A440_STEREO_16B, block_size=50)
+        self.assertEqual(type(blocks), types.GeneratorType)
+        blocks = list(blocks)
+        self.assertEqual([len(b) for b in blocks], [50, 50, 50, 50, 50, 50, 50, 50, 41])
+        self.assertEqual(blocks[0].shape, (50, 2))
+        self.assertEqual(infos['frame_rate'], 44100)
+        self.assertEqual(infos['channel_count'], 2)
+        # Sanity check
+        frame_rate, samples_test = sp_wavfile.read(A440_STEREO_16B)
+        self.assertEqual(blocks[0][:10,:].round(4), (samples_test[:10,:] / float(2**15)).round(4))
 
     def write_wav_test(self):
         # Write mono

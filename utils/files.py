@@ -12,9 +12,67 @@ import subprocess
 import types
 
 
+def write_wav(f, samples, frame_rate=44100):
+    """
+    Writes audio samples to a wav file.
+    `f` can be a file object or a filename.
+    `samples` can be a numpy array or a generator yielding numpy arrays.
+    """
+    fd = wave.open(f, mode='wb')
+    fd.setsampwidth(2)
+    fd.setframerate(frame_rate)
+    if isinstance(samples, types.GeneratorType):
+        chunk = samples.next()
+        fd.setnchannels(chunk.shape[1])
+        fd.writeframes(samples_to_string(chunk))
+        for chunk in samples: fd.writeframes(samples_to_string(chunk))
+    else:
+        fd.setnchannels(samples.shape[1])
+        fd.writeframes(samples_to_string(samples))
+
+
+def read_wav(f, start=None, end=None, block_size=None):
+    """
+    Reads audio samples from a wav file and returns `samples, infos`.
+    If `block_size` is defined, `samples` is a generator yielding
+    blocks of at least `block_size` frames.
+    `f` can be a file object or a filename.
+    """
+    # Opening the file and getting infos
+    raw = wave.open(f, 'rb')
+    channel_count = raw.getnchannels()
+    sample_width = raw.getsampwidth()       # Sample width in byte
+    if sample_width != 2: raise ValueError('Wave format not supported')
+    frame_rate = raw.getframerate()
+    infos = {'frame_rate': frame_rate, 'channel_count': channel_count}
+
+    # Calculating start position and end position
+    # for reading the samples
+    if start is None: start = 0
+    start_frame = start * frame_rate
+    if end is None: end_frame = raw.getnframes()
+    else: end_frame = end * frame_rate
+    frame_count = int(end_frame - start_frame)
+
+    # Reading samples between `start` and `end`.
+    raw.setpos(int(start_frame))
+    if block_size is None:
+        samples = raw.readframes(frame_count)
+        samples = string_to_samples(samples, channel_count)
+        return samples, infos
+    else:
+        def gen():
+            read = 0
+            while read < frame_count:
+                block = raw.readframes(block_size)
+                yield string_to_samples(block, channel_count)
+                read += block_size
+        return gen(), infos
+
+
 def samples_to_string(samples):
     """
-    Takes a float32 numpy array, containing audio data in the range [-1, 1],
+    Takes a float32 numpy array, containing audio samples in the range [-1, 1],
     returns the equivalent wav byte string.
     `samples` can be stereo, mono, or a one-dimensional array (thus mono).
     """
@@ -26,9 +84,8 @@ def samples_to_string(samples):
 def string_to_samples(string, channel_count):
     """
     Takes a byte string of raw PCM data and returns a float32 numpy array containing
-    audio data in range [-1, 1].
+    audio samples in range [-1, 1].
     """
-    # TODO: test
     samples = np.fromstring(string, dtype='int16')
     samples = samples / float(2**15)
     samples.astype(np.float32)
@@ -36,51 +93,10 @@ def string_to_samples(string, channel_count):
     return samples.reshape([frame_count, channel_count])
 
 
-def write_wav(f, data, frame_rate=44100):
-    """
-    Writes audio data to a wav file.
-    `f` can be an open file object or a filename.
-    `data` can be a numpy array or a generator yielding numpy arrays.
-    """
-    fd = wave.open(f, mode='wb')
-    fd.setsampwidth(2)
-    fd.setframerate(frame_rate)
-    if isinstance(data, types.GeneratorType):
-        chunk = data.next()
-        fd.setnchannels(chunk.shape[1])
-        fd.writeframes(samples_to_string(chunk))
-        for chunk in data: fd.writeframes(samples_to_string(chunk))
-    else:
-        fd.setnchannels(data.shape[1])
-        fd.writeframes(samples_to_string(data))
-
-
-def read_wav(f, start=None, end=None):
-    # Opening the file and getting infos
-    raw = wave.open(f, 'rb')
-    channel_count = raw.getnchannels()
-    sample_width = raw.getsampwidth()       # Sample width in byte
-    if sample_width != 2: raise ValueError('Wave format not supported')
-    frame_rate = raw.getframerate()
-
-    # Calculating start position and end position
-    # for reading the data
-    if start is None: start = 0
-    start_frame = start * frame_rate
-    if end is None: end_frame = raw.getnframes()
-    else: end_frame = end * frame_rate
-    frame_count = end_frame - start_frame
-
-    # Reading only the data between `start` and `end`,
-    # putting this data to a numpy array 
-    raw.setpos(int(start_frame))
-    data = raw.readframes(int(frame_count))
-    data = string_to_samples(data, channel_count)
-    return data, {'frame_rate': frame_rate, 'channel_count': channel_count}
-
-
 def guess_fileformat(filename):
-    # Get the format of the file
+    """
+    Guess the format of a sound file.
+    """
     try:
         return filename.split('.')[-1]
     except IndexError:
@@ -128,39 +144,3 @@ def convert_file(filename, to_format, to_filename=None):
     origin_file.close()
     return to_filename
 
-
-class OggEncoder(object):
-    
-    def __init__(self):
-        #self._in = file()
-        self._out = StringIO.StringIO()
-        self.oggenc = subprocess.Popen(['oggenc', '-', '-r', '-C', '1', '-B', '16', '-R', '44100'],
-                        stdout=subprocess.PIPE,
-                                    stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
-        
-    def encode(self, data):
-        import time
-        data = StringIO.StringIO(samples_to_string(data))
-        out = ''
-        while True:
-            stdin_data = data.read(64)
-            if not stdin_data: break
-            self.oggenc.stdin.write(input=stdin_data)
-            stdout_data # TODO
-            out += stdout_data
-        return out
-
-
-if __name__ == '__main__':
-    import math
-    phase = 0
-    K = 2 * math.pi * 440 / 44100
-    def next_frame():
-        global phase, K
-        while(True):
-            phase += K
-            yield math.cos(phase)
-    data_gen = next_frame()
-    data = [data_gen.next() for i in range(44100)]
-
-    write_wav('test.wav', data)
