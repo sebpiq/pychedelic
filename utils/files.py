@@ -64,9 +64,10 @@ def read_wav(f, start=None, end=None, block_size=None):
         def gen():
             read = 0
             while read < frame_count:
-                block = raw.readframes(block_size)
+                next_size = min(block_size, frame_count - read)
+                block = raw.readframes(next_size)
+                read += next_size
                 yield string_to_samples(block, channel_count)
-                read += block_size
         return gen(), infos
 
 

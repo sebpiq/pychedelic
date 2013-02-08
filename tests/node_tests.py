@@ -1,6 +1,8 @@
-from __init__ import PychedelicTestCase, A440_MONO_16B, A440_STEREO_16B, A440_MONO_MP3, MILES_MP3
+from tempfile import NamedTemporaryFile
 
+from __init__ import PychedelicTestCase, A440_MONO_16B, A440_STEREO_16B, A440_MONO_MP3, MILES_MP3
 from pychedelic.node import *
+from pychedelic.utils.files import write_wav, read_wav
 
 
 class Node_Test(PychedelicTestCase):
@@ -75,19 +77,25 @@ class Node_Test(PychedelicTestCase):
             [[6, 6], [7, 7], [8, 8]], [[9, 9], [0, 0], [0, 0]]
         ])
         
-'''
+
 class SoundFile_Test(PychedelicTestCase):
 
-    soundfile = SoundFile('tests/sounds/A440_mono_16B.wav', out_block_size=10)
-    blocks = list(soundfile)
-    block_lengths = np.array([b.shape[0] for b in blocks])
-    print np.all(block_lengths == 10)
+    def simple_read_test(self):
+        # Read all file
+        soundfile = SoundFile(A440_MONO_16B, block_size=10)
+        blocks = list(soundfile)
+        self.assertTrue(all([b.shape[0] == 10 for b in blocks[:-1]]))
+        self.assertEqual(len(blocks[-1]), 1)
+        self.assertEqual(sum([b.shape[0] for b in blocks]), 441)
+        test_blocks, infos = read_wav(A440_MONO_16B, block_size=10)
+        self.assertEqual(self.blocks_to_list(blocks), self.blocks_to_list(test_blocks))
 
-    soundfile = SoundFile('tests/sounds/A440_mono_16B.wav', out_block_size=10)
-    to_raw = ToRaw()
-    to_raw.plug_in(soundfile)
-    raw_blocks = list(to_raw)
-    raw = ''.join(raw_blocks)
-    raw_test_fd = wave.open('tests/sounds/A440_mono_16B.wav', 'rb')
-    raw_test = raw_test_fd.readframes(raw_test_fd.getnframes())
-    print raw_test == raw, raw.startswith(raw_test)'''
+        # Read only a segment of the file
+        soundfile = SoundFile(A440_STEREO_16B, start=0.002, end=0.004)
+        blocks = list(soundfile)
+        samples = blocks[0]
+        self.assertTrue(len(blocks), 1)
+        self.assertEqual(samples.shape[0], 88)
+        self.assertEqual(samples.shape[1], 2)
+        test_samples, infos = read_wav(A440_STEREO_16B, start=0.002, end=0.004)
+        self.assertEqual(samples, test_samples)

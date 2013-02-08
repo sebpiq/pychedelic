@@ -2,7 +2,7 @@ import wave
 
 import numpy as np
 
-from utils.files import string_to_samples, samples_to_string
+from utils.files import samples_to_string, read_wav
 from utils.stream import reblock
 
 
@@ -56,7 +56,6 @@ class HasInput(object):
 
 
 class PipeNode(HasOutput, HasInput, Node):
-    
     pass
 
 
@@ -70,38 +69,19 @@ class SinkNode(HasInput, Node):
 
 class SoundFile(SourceNode):
 
-    def __init__(self, filelike, start=None, end=None, out_block_size=1024):
+    def __init__(self, filelike, start=None, end=None, block_size=1024):
         super(SoundFile, self).__init__()
         # We open just to get the name of the file
         with open(filelike, 'r') as fd:
             self.filename = fd.name
+        gen, infos = read_wav(filelike, start=start, end=end, block_size=block_size)
+        self._gen = gen
 
-        # Opening the file and getting infos
-        self.fd = fd = wave.open(filelike, 'rb')
-        sample_width = fd.getsampwidth()       # Sample width in byte
-        if sample_width != 2: raise ValueError('Wave format not supported')
-        self.channel_count = fd.getnchannels()
-        self.frame_rate = fd.getframerate()
-
-        # Calculating start position and end position
-        # for reading the data
-        if start is None: start = 0
-        self.start_frame = start * self.frame_rate
-        self.end_frame = fd.getnframes() if end is None else end * self.frame_rate
-        self.frame_count = int(self.end_frame - self.start_frame)
-
-    def start(self):
-        # Reading only the data between `start` and `end`,
-        # putting this data to a numpy array 
-        self.fd.setpos(int(self.start_frame))
-
-    def block(self):
-        data = self.fd.readframes(self.out_block_size)
-        if not data: raise StopIteration()
-        return string_to_samples(data, self.channel_count)
+    def next(self):
+        return self._gen.next()
 
 
 class ToRaw(SinkNode):
 
     def next(self):
-        return samples_to_string(self.input.next())    
+        return samples_to_string(self.input.next())

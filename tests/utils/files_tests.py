@@ -56,7 +56,7 @@ class read_write_wave_Test(PychedelicTestCase):
         self.assertEqual(infos['frame_rate'], 44100)
         self.assertEqual(infos['channel_count'], 1)
 
-        # Returning a generator
+    def read_wav_generator_test(self):
         blocks, infos = read_wav(A440_STEREO_16B, block_size=50)
         self.assertEqual(type(blocks), types.GeneratorType)
         blocks = list(blocks)
@@ -67,6 +67,22 @@ class read_write_wave_Test(PychedelicTestCase):
         # Sanity check
         frame_rate, samples_test = sp_wavfile.read(A440_STEREO_16B)
         self.assertEqual(blocks[0][:10,:].round(4), (samples_test[:10,:] / float(2**15)).round(4))
+
+        # Read only a segment of the file, block_size bigger than segment to read
+        blocks, infos = read_wav(A440_MONO_16B, start=0.002, end=0.004, block_size=1000)
+        self.assertEqual(type(blocks), types.GeneratorType)
+        samples = np.concatenate(list(blocks), axis=0)
+        self.assertEqual(samples.shape, (88, 1))
+        self.assertEqual(infos['frame_rate'], 44100)
+        self.assertEqual(infos['channel_count'], 1)
+
+        # Ommit end, not an exact count of block_size
+        blocks, infos = read_wav(A440_MONO_16B, start=0.002, block_size=20)
+        self.assertEqual(type(blocks), types.GeneratorType)
+        samples = np.concatenate(list(blocks), axis=0)
+        self.assertEqual(samples.shape, (352, 1))
+        self.assertEqual(infos['frame_rate'], 44100)
+        self.assertEqual(infos['channel_count'], 1)
 
     def write_wav_test(self):
         # Write mono
@@ -119,6 +135,7 @@ class read_write_wave_Test(PychedelicTestCase):
         self.assertEqual(samples_written, np.array([-2**15] * 441, dtype=np.int16))
         dest_file.close()
 
+    def write_wav_generator_test(self):
         # Write with generator as input
         samples = np.sin(np.linspace(0, 0.1, 4410) * 2 * np.pi * 440)
         samples = samples.reshape(4410, 1)
