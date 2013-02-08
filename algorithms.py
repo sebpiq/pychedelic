@@ -245,7 +245,7 @@ def optimize_block_size(n):
     return orig_n
 
 
-def paulstretch(samples, ratio, block_size=None, frame_rate=44100, nchannels=1, nsamples=0):
+def paulstretch(samples, ratio, block_size=None, frame_rate=44100):
     """
     Paul's Extreme Sound Stretch (Paulstretch) - Python version
     
@@ -254,35 +254,27 @@ def paulstretch(samples, ratio, block_size=None, frame_rate=44100, nchannels=1, 
     https://github.com/paulnasca/paulstretch_python
     http://hypermammut.sourceforge.net/paulstretch/
     """
-    #nsamples, nchannels = samples.shape[0], samples.shape[1]
-
-    # make sure that block_size is even and larger than 16
     block_size = block_size or frame_rate / 4
     block_size = max(16, block_size)
     block_size = optimize_block_size(block_size)
-    block_size = int(block_size/2) * 2
-    half_block_size = int(block_size/2)
+    block_size = int(block_size / 2) * 2 #TODO: useless because optimize_bloc_size ?
+    half_block_size = int(block_size / 2)
+    overlap = int(np.floor(block_size - block_size * 0.5 / ratio))
 
-    # correct the end of the smp
-    end_size = int(frame_rate*0.05)
-    if end_size < 16: end_size=16
-    #samples[nsamples-end_size:nsamples,:] *= np.array([np.linspace(1, 0, end_size)]).transpose()
-
-    # create Window window
+    # create window
     window = pow(1.0 - pow(np.linspace(-1.0, 1.0, block_size), 2.0), 1.25)
     window = np.array([window]).transpose()
-    old_windowed_buf = np.zeros((block_size, nchannels))
+    previous_buf = None
 
-    for block in reblock(samples, block_size, when_exhausted='pad'):
-        print block.shape, block_size
-        # get the windowed buffer
+    for block in reblock(samples, block_size, overlap=overlap, when_exhausted='pad'):
+        # apply window
         buf = block * window
     
         # get the amplitudes of the frequency components and discard the phases
         freqs = abs(np.fft.rfft(buf, axis=0))
 
         # randomize the phases by multiplication with a random complex number with modulus=1
-        ph = np.random.uniform(0, 2*np.pi, (freqs.shape[0], nchannels)) * 1j
+        ph = np.random.uniform(0, 2*np.pi, (freqs.shape[0], freqs.shape[1])) * 1j
         freqs = freqs * np.exp(ph)
 
         # do the inverse FFT 
@@ -292,82 +284,11 @@ def paulstretch(samples, ratio, block_size=None, frame_rate=44100, nchannels=1, 
         buf *= window
 
         # overlap-add the output
-        output = buf[0:half_block_size,:] + old_windowed_buf[half_block_size:block_size,:]
-        old_windowed_buf = buf
+        output = buf[0:half_block_size,:]
+        if previous_buf is not None: output += previous_buf[half_block_size:block_size,:]
 
-        print 'OUT', output.shape
-        # remove the resulted amplitude modulation
-        # update: there is no need to the new windowing function
         yield output
-
-
-
-'''
-def paulstretch(samples, ratio, windowsize_seconds=0.25, frame_rate=44100):
-    """
-    Paul's Extreme Sound Stretch (Paulstretch) - Python version
-    
-    by Nasca Octavian PAUL, Targu Mures, Romania
-    
-    https://github.com/paulnasca/paulstretch_python
-    http://hypermammut.sourceforge.net/paulstretch/
-    """
-    nsamples, nchannels = samples.shape[0], samples.shape[1]
-
-    # make sure that windowsize is even and larger than 16
-    windowsize = int(windowsize_seconds * frame_rate)
-    if windowsize < 16: windowsize = 16
-    windowsize = optimize_windowsize(windowsize)
-    windowsize = int(windowsize/2) * 2
-    half_windowsize = int(windowsize/2)
-
-    # correct the end of the smp
-    end_size = int(frame_rate*0.05)
-    if end_size < 16: end_size=16
-    samples[nsamples-end_size:nsamples,:] *= np.array([np.linspace(1, 0, end_size)]).transpose()
-    
-    # compute the displacement inside the input file
-    start_pos = 0.0
-    displace_pos = (windowsize*0.5)/ratio
-
-    # create Window window
-    window = pow(1.0 - pow(np.linspace(-1.0, 1.0, windowsize), 2.0), 1.25)
-    window = np.array([window]).transpose()
-    old_windowed_buf = np.zeros((windowsize, nchannels))
-
-    while start_pos < nsamples:
-        # get the windowed buffer
-        istart_pos = int(np.floor(start_pos))
-        buf = samples[istart_pos:istart_pos+windowsize,:]
-        if buf.shape[0] < windowsize:
-            buf = np.append(buf, np.zeros((windowsize - buf.shape[0], nchannels)), axis=0)
-        buf = buf * window
-    
-        # get the amplitudes of the frequency components and discard the phases
-        freqs = abs(np.fft.rfft(buf, axis=0))
-
-        # randomize the phases by multiplication with a random complex number with modulus=1
-        ph = np.random.uniform(0, 2*np.pi, (freqs.shape[0], nchannels)) * 1j
-        freqs = freqs * np.exp(ph)
-
-        # do the inverse FFT 
-        buf = np.fft.irfft(freqs, axis=0)
-
-        # window again the output buffer
-        buf *= window
-
-        # overlap-add the output
-        output = buf[0:half_windowsize,:] + old_windowed_buf[half_windowsize:windowsize,:]
-        old_windowed_buf = buf
-
-        # remove the resulted amplitude modulation
-        # update: there is no need to the new windowing function
-        yield output
-
-        start_pos += displace_pos
-'''
-
-
+        previous_buf = buf
 
 
 def calculate_replaygain(samples, frame_rate=44100):
