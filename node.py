@@ -17,36 +17,6 @@ class BaseNode(object):
     def next(self):
         raise NotImplementedError()
 
-    def next(self):
-        if self.exhausted: raise StopIteration()
-
-        # First, get as much chunk of data as needed to
-        # make a block.
-        size = sum([s.shape[0] for s in self.buffer])
-        while size < self.block_size:
-            try:
-                chunk = self.block()
-            except StopIteration:
-                self.exhausted = True
-                chunk = np.zeros((self.block_size - size, 1))
-            self.buffer.append(chunk)
-            size += chunk.shape[0]
-        
-        # If there's too much data in the buffer, we need
-        # to cut the last chunk and keep the remainder for next iteration
-        extra = sum([s.shape[0] for s in self.buffer]) - self.block_size
-        new_buffer = []
-        if extra > 0:
-            last_chunk = self.buffer.pop(-1)
-            self.buffer.append(last_chunk[:extra])
-            new_buffer = [last_chunk[extra:]]
-
-        # Finally concatenate the chunks in the buffer,
-        # prepare buffer or next time and return the block
-        block = np.concatenate(self.buffer, axis=0)
-        self.buffer = new_buffer
-        return block
-
 
 class AudioOutMixin(object):
 

@@ -1,3 +1,4 @@
+#coding=utf8
 from tempfile import NamedTemporaryFile
 import math
 import numpy as np

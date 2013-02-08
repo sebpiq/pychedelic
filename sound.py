@@ -88,64 +88,6 @@ class Sound(PychedelicSampledDataFrame):
         return cls(np.sum(tracks_ready, axis=0), frame_rate=frame_rate)
 
     @classmethod
-    def iter_mix(cls, *tracks, **params):
-        block_size = params.get('block_size', 44100)
-        buffers = [[] for i in range(len(tracks))]
-        # TODO: forbid stuff like 'start' attribute for tracks
-        out_tracks = [t.copy() for t in tracks]
-        frame_rate = None
-        data_available = True
-        while data_available:
-            # First, for each track, fill-in the buffer.
-            # If all tracks raise `StopIteration`, we're done.
-            finished = 0
-            for i, buf in enumerate(buffers):
-                size = sum([s.shape[0] for s in buf])
-                while size < block_size:
-                    try:
-                        sound = tracks[i]['sound'].next()
-                    except StopIteration:
-                        sound = block_size - size
-                        finished += 1
-                        buf.append(sound)
-                        break
-                    else:
-                        if frame_rate is None:
-                            frame_rate = sound.frame_rate
-                    buf.append(sound)
-                    size += sound.shape[0]
-            if finished == len(tracks): data_available = False
-            
-            # Second, concatenate and mix the sounds from `buffers`
-            for i, buf in enumerate(buffers):
-                # All sounds but the last one are ready to be concatenated
-                # in one block.
-                sounds = []
-                sound = None
-                for sound in buf[:-1]:
-                    sound = buf.pop(0)
-                    sounds.append(sound)
-
-                # Getting the channel count, relying on the fact that
-                # only the last element in `buf` can be zeros.
-                if sound is not None: channel_count = sound.shape[1]
-                else: channel_count = 1
-                
-                # The last sound might need to be cut in the middle if too long.
-                offset = block_size - sum([s.shape[0] for s in sounds])
-                sound = buf.pop(0)
-                if isinstance(sound, int):
-                    sound = Sound(np.zeros((sound, channel_count)), frame_rate=frame_rate)
-                elif offset < sound.shape[0]:
-                    buf.append(sound[offset:]) # Add the remainder to `buf`
-                    sound = sound[:offset]
-                sounds.append(sound)
-
-                # Now, concatenates the whole thing, ready to be mixed.
-                out_tracks[i]['sound'] = Sound.concatenate(*sounds)
-            yield Sound.mix(*out_tracks, **params)
-
-    @classmethod
     def concatenate(cls, *sounds):
         try:
             frame_rates = [s.frame_rate for s in sounds]
