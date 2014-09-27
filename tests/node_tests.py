@@ -1,3 +1,4 @@
+import os
 from tempfile import NamedTemporaryFile
 
 from __init__ import PychedelicTestCase, A440_MONO_16B, A440_STEREO_16B, A440_MONO_MP3, MILES_MP3
@@ -38,7 +39,8 @@ class Node_Test(PychedelicTestCase):
         # to test extensively
         class ControlNode(PipeNode):
 
-            def start(self):
+            def __init__(self, in_block_size=10):
+                super(ControlNode, self).__init__(in_block_size=in_block_size)
                 self.blocks = []
 
             def next(self):
@@ -77,12 +79,61 @@ class Node_Test(PychedelicTestCase):
             [[6, 6], [7, 7], [8, 8]], [[9, 9], [0, 0], [0, 0]]
         ])
         
+    def simple_process_test(self):
+        connections = []
 
-class SoundFile_Test(PychedelicTestCase):
+        class CountSource(SourceNode):
+            def __init__(self):
+                super(CountSource, self).__init__()
+                self.count = 0
+            def on_connection(self):
+                connections.append('source')
+            def next(self):
+                self.count += 1
+                return np.ones([5, 1]) * self.count
+
+        class HalfPipe(PipeNode):
+            def __init__(self):
+                super(HalfPipe, self).__init__(in_block_size=5)
+            def on_connection(self):
+                connections.append('pipe')
+            def next(self):
+                block = self.input.next()
+                return block * 0.5
+
+        class ConcatSink(SinkNode):
+            def __init__(self):
+                super(ConcatSink, self).__init__(in_block_size=5)
+                self.all_blocks = []
+            def on_connection(self):
+                connections.append('sink')
+            def next(self):
+                self.all_blocks.append(self.input.next())
+
+        count = CountSource()
+        halve = HalfPipe()
+        concat = ConcatSink()
+
+        count > halve > concat
+        concat.next()
+        concat.next()
+        concat.next()
+        concat.next()
+
+        self.assertEqual(connections, ['pipe', 'sink'])
+        
+        self.assertEqual(len(concat.all_blocks), 4)
+        self.assertEqual(concat.all_blocks[0], np.array([[0.5, 0.5, 0.5, 0.5, 0.5]]).transpose())
+        self.assertEqual(concat.all_blocks[1], np.array([[1, 1, 1, 1, 1]]).transpose())
+        self.assertEqual(concat.all_blocks[2], np.array([[1.5, 1.5, 1.5, 1.5, 1.5]]).transpose())
+        self.assertEqual(concat.all_blocks[3], np.array([[2, 2, 2, 2, 2]]).transpose())
+
+
+class FromFile_Test(PychedelicTestCase):
 
     def simple_read_test(self):
         # Read all file
-        soundfile = SoundFile(A440_MONO_16B, block_size=10)
+        soundfile = FromFile(A440_MONO_16B, block_size=10)
         blocks = list(soundfile)
         self.assertTrue(all([b.shape[0] == 10 for b in blocks[:-1]]))
         self.assertEqual(len(blocks[-1]), 1)
@@ -91,7 +142,7 @@ class SoundFile_Test(PychedelicTestCase):
         self.assertEqual(self.blocks_to_list(blocks), self.blocks_to_list(test_blocks))
 
         # Read only a segment of the file
-        soundfile = SoundFile(A440_STEREO_16B, start=0.002, end=0.004)
+        soundfile = FromFile(A440_STEREO_16B, start=0.002, end=0.004)
         blocks = list(soundfile)
         samples = blocks[0]
         self.assertTrue(len(blocks), 1)
@@ -99,3 +150,20 @@ class SoundFile_Test(PychedelicTestCase):
         self.assertEqual(samples.shape[1], 2)
         test_samples, infos = read_wav(A440_STEREO_16B, start=0.002, end=0.004)
         self.assertEqual(samples, test_samples)
+
+
+class ToFile_Test(PychedelicTestCase):
+
+    def simple_write_test(self):
+        temp_file = NamedTemporaryFile()
+
+        fromfile = FromFile(A440_MONO_16B, block_size=10)
+        tofile = ToFile(temp_file)
+
+        fromfile > tofile
+
+        temp_file.seek(0)
+        actual_samples, infos = read_wav(temp_file)
+        expected_samples, infos = read_wav(A440_MONO_16B)
+
+        self.assertEqual(actual_samples, expected_samples)

@@ -15,6 +15,7 @@ def reblock(block_gen, block_size, when_exhausted='pad', overlap=0):
         raise ValueError('invalid value for when_exhausted : %s' % when_exhausted)
     if overlap and overlap >= block_size:
         raise ValueError('overlap cannot be more than block_size')
+        
     exhausted = False
     buf = []
     size = 0
@@ -42,7 +43,10 @@ def reblock(block_gen, block_size, when_exhausted='pad', overlap=0):
             last_chunk = buf.pop(-1)
             buf.append(last_chunk[:-extra])
             new_buffer = [last_chunk[-extra:]]
-        block = np.concatenate(buf, axis=0)
+        try:
+            block = np.concatenate(buf, axis=0)
+        except Exception as err:
+            import pdb; pdb.set_trace()
         yield block
 
         # Preparing next iteration

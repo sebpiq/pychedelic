@@ -21,7 +21,7 @@ def write_wav(f, samples, frame_rate=44100):
     fd = wave.open(f, mode='wb')
     fd.setsampwidth(2)
     fd.setframerate(frame_rate)
-    if isinstance(samples, types.GeneratorType):
+    if hasattr(samples, 'next'):
         chunk = samples.next()
         fd.setnchannels(chunk.shape[1])
         fd.writeframes(samples_to_string(chunk))
