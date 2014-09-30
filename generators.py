@@ -1,4 +1,4 @@
-import wave
+import time
 from contextlib import contextmanager
 
 import numpy
@@ -7,7 +7,9 @@ try:
 except ImportError:
     print 'Please install pyAudio if you want to play back audio'
 
-from utils import wav, pcm
+from utils import wav
+from utils import pcm
+from utils import stream
 
 
 def read_wav(f, start=0, end=None, block_size=1024):
@@ -39,23 +41,29 @@ def to_raw(source):
             yield pcm.samples_to_string(source.next())
 
 
-#TODO callback instead of blocking call
-def playback(source, frame_rate):
-    with _until_StopIteration():
-        block = source.next()
-        channel_count = block.shape[1]
+def playback(source, frame_rate, channel_count):
+    p = pyaudio.PyAudio()
+    buf = stream.Buffer(source)
+    def callback(in_data, frame_count, time_info, status):
+        print frame_count
+        try:
+            block_size, block = buf.pull(frame_count)
+        except StopIteration:
+            return (None, pyaudio.paComplete)
+        else:
+            return (pcm.float_to_int(block), pyaudio.paContinue)
 
-        p = pyaudio.PyAudio()
-        stream = p.open(
-            format=p.get_format_from_width(2), # Only format supported right now 16bits
-            channels=channel_count, 
-            rate=frame_rate,
-            output=True
-        )
+    pyaudio_stream = p.open(
+        format=p.get_format_from_width(2), # Only format supported right now 16bits
+        channels=channel_count, 
+        rate=frame_rate,
+        output=True,
+        stream_callback=callback
+    )
 
-        while True:
-            stream.write(pcm.float_to_int(block))
-            block = source.next()
+    pyaudio_stream.start_stream()
+    while pyaudio_stream.is_active():
+        time.sleep(3)
 
 
 @contextmanager

@@ -42,4 +42,4 @@ if __name__ == '__main__':
                 fm_sine(5)
             , 10)
         , 300)
-    ), frame_rate)
+    ), frame_rate, 1)
