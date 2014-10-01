@@ -7,9 +7,9 @@ try:
 except ImportError:
     print 'Please install pyAudio if you want to play back audio'
 
-from utils import wav
-from utils import pcm
-from utils import stream
+from core import wav
+from core import pcm
+from core import buffering
 
 
 def read_wav(f, start=0, end=None, block_size=1024):
@@ -42,7 +42,7 @@ def to_raw(source):
 
 
 def playback(source, frame_rate):
-    buf = stream.Buffer(source)
+    buf = buffering.Buffer(source)
     channel_count = buf.fill(1).shape[1]
 
     def callback(in_data, frame_count, time_info, status):
@@ -56,7 +56,7 @@ def playback(source, frame_rate):
             return (None, pyaudio.paComplete)
 
     p = pyaudio.PyAudio()
-    pyaudio_stream = p.open(
+    stream = p.open(
         format=p.get_format_from_width(2), # Only format supported right now 16bits
         channels=channel_count, 
         rate=frame_rate,
@@ -64,12 +64,12 @@ def playback(source, frame_rate):
         stream_callback=callback
     )
 
-    pyaudio_stream.start_stream()
-    while pyaudio_stream.is_active():
+    stream.start_stream()
+    while stream.is_active():
         time.sleep(0.05)
 
-    pyaudio_stream.stop_stream()
-    pyaudio_stream.close()
+    stream.stop_stream()
+    stream.close()
     p.terminate()
 
 

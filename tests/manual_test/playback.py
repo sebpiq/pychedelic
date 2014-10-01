@@ -1,9 +1,9 @@
 import numpy
 import scipy.io.wavfile as sp_wavfile
 
-from __init__ import A440_MONO_16B, A440_STEREO_16B
+import __init__
 from pychedelic import generators
-from pychedelic.utils import pcm
+
 
 if __name__ == '__main__':
     frame_rate = 44100

@@ -4,7 +4,7 @@ import unittest
 import scipy.io.wavfile as sp_wavfile
 import numpy
 
-from pychedelic.utils import wav
+from pychedelic.core import wav
 from __init__ import STEPS_MONO_16B, STEPS_STEREO_16B
 
 

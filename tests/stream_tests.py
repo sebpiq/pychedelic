@@ -7,14 +7,13 @@ import numpy
 import scipy.io.wavfile as sp_wavfile
 
 from __init__ import A440_MONO_16B, A440_STEREO_16B
-from pychedelic import generators
-from pychedelic.utils import wav
+from pychedelic import stream
 
 
 class read_wav_Test(unittest.TestCase):
 
     def blocks_size_test(self):
-        blocks = generators.read_wav(A440_STEREO_16B, block_size=50)
+        blocks = stream.read_wav(A440_STEREO_16B, block_size=50)
         self.assertEqual(type(blocks), types.GeneratorType)
         blocks = list(blocks)
         self.assertEqual([len(b) for b in blocks], [50, 50, 50, 50, 50, 50, 50, 50, 41])
@@ -29,7 +28,7 @@ class read_wav_Test(unittest.TestCase):
         """
         Read only a segment of the file, block_size bigger than segment to read.
         """
-        blocks = generators.read_wav(A440_MONO_16B, start=0.002, end=0.004, block_size=1000)
+        blocks = stream.read_wav(A440_MONO_16B, start=0.002, end=0.004, block_size=1000)
         self.assertEqual(type(blocks), types.GeneratorType)
         blocks = list(blocks)
         self.assertEqual(len(blocks), 1)
@@ -44,7 +43,7 @@ class read_wav_Test(unittest.TestCase):
         """
         Ommit end, not an exact count of block_size.
         """
-        blocks = generators.read_wav(A440_MONO_16B, start=0.002, block_size=20)
+        blocks = stream.read_wav(A440_MONO_16B, start=0.002, block_size=20)
         self.assertEqual(type(blocks), types.GeneratorType)
         blocks = list(blocks)
         self.assertEqual([len(b) for b in blocks], [20] * 17 + [13])
@@ -68,7 +67,7 @@ class to_wav_file_Test(unittest.TestCase):
                 blocks.append(block)
                 yield block
 
-        sink = generators.to_wav_file(source(), temp_file, 44100)
+        sink = stream.to_wav_file(source(), temp_file, 44100)
         #list(sink) # pull audio
 
         expected = numpy.concatenate(blocks)
@@ -94,7 +93,7 @@ class to_wav_file_Test(unittest.TestCase):
             while True:
                 yield source.next() * 2
 
-        sink = generators.to_wav_file(double(source()), temp_file, 44100)
+        sink = stream.to_wav_file(double(source()), temp_file, 44100)
 
         expected = numpy.concatenate(blocks) * 2
         frame_rate, actual = sp_wavfile.read(temp_file.name)
