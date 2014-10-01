@@ -11,7 +11,7 @@ class Buffer_Test(unittest.TestCase):
         def gen():
             yield numpy.tile(numpy.arange(0, 10), (2, 1)).transpose()
         buf = Buffer(gen())
-        blocks = [buf.pull(2)[1] for i in range(0, 5)]
+        blocks = [buf.pull(2) for i in range(0, 5)]
         numpy.testing.assert_array_equal(blocks, [
             [[0, 0], [1, 1]], [[2, 2], [3, 3]], [[4, 4], [5, 5]],
             [[6, 6], [7, 7]], [[8, 8], [9, 9]]
@@ -22,7 +22,7 @@ class Buffer_Test(unittest.TestCase):
             for i in range(10):
                 yield numpy.array([[i * 11]])
         buf = Buffer(gen())
-        blocks = [buf.pull(2)[1] for i in range(0, 5)]
+        blocks = [buf.pull(2) for i in range(0, 5)]
         numpy.testing.assert_array_equal(blocks, [
             [[0], [11]], [[22], [33]], [[44], [55]],
             [[66], [77]], [[88], [99]]
@@ -34,7 +34,7 @@ class Buffer_Test(unittest.TestCase):
                 yield numpy.array([[i * 1] * 3])
             yield numpy.tile(numpy.arange(5, 10), (3, 1)).transpose()
         buf = Buffer(gen())
-        blocks = [buf.pull(2)[1] for i in range(0, 5)]
+        blocks = [buf.pull(2) for i in range(0, 5)]
         numpy.testing.assert_array_equal(blocks, [
             [[0, 0, 0], [1, 1, 1]], [[2, 2, 2], [3, 3, 3]],
             [[4, 4, 4], [5, 5, 5]], [[6, 6, 6], [7, 7, 7]],
@@ -45,20 +45,17 @@ class Buffer_Test(unittest.TestCase):
         def gen():
             yield numpy.tile(numpy.arange(0, 11), (2, 1)).transpose()
         buf = Buffer(gen())
-        results = [buf.pull(3) for i in range(0, 3)]
-        blocks = map(lambda b: b[1], results)
-        block_sizes = map(lambda b: b[0], results)
+        blocks = [buf.pull(3) for i in range(0, 3)]
         numpy.testing.assert_array_equal(blocks, [
             [[0, 0], [1, 1], [2, 2]],
             [[3, 3], [4, 4], [5, 5]],
             [[6, 6], [7, 7], [8, 8]]
         ])
-        self.assertEqual(block_sizes, [3, 3, 3])
 
-        block_size, block = buf.pull(3)
+        block = buf.pull(3)
         numpy.testing.assert_array_equal(block, [[9, 9], [10, 10]])
-        self.assertEqual(block_size, 2)
-        self.assertEqual(buf.pull(2), (0, None))
+        self.assertEqual(buf.pull(2), None)
+        self.assertEqual(buf.pull(2), None)
 
     def overlap_cut_test(self):
         """
@@ -67,7 +64,7 @@ class Buffer_Test(unittest.TestCase):
         def gen():
             yield numpy.tile(numpy.arange(0, 6), (2, 1)).transpose()
         buf = Buffer(gen())
-        blocks = [buf.pull(3, overlap=2)[1] for i in range(0, 4)]
+        blocks = [buf.pull(3, overlap=2) for i in range(0, 4)]
         numpy.testing.assert_array_equal(blocks, [
             [[0, 0], [1, 1], [2, 2]], [[1, 1], [2, 2], [3, 3]],
             [[2, 2], [3, 3], [4, 4]], [[3, 3], [4, 4], [5, 5]],
@@ -81,12 +78,39 @@ class Buffer_Test(unittest.TestCase):
             for i in range(6):
                 yield numpy.array([[i * 11, i * 11]])
         buf = Buffer(gen())
-        blocks = [buf.pull(2, overlap=1)[1] for i in range(0, 5)]
+        blocks = [buf.pull(2, overlap=1) for i in range(0, 5)]
         numpy.testing.assert_array_equal(blocks, [
             [[0, 0], [11, 11]], [[11, 11], [22, 22]],
             [[22, 22], [33, 33]], [[33, 33], [44, 44]],
             [[44, 44], [55, 55]]
         ])
+
+    def buffer_fill_test(self):
+        def gen():
+            for i in range(6):
+                yield numpy.array([[i * 11]])
+        buf = Buffer(gen())
+        blocks = [buf.fill(2) for i in range(0, 2)]
+        numpy.testing.assert_array_equal(blocks, [
+            [[0], [11]], [[0], [11]]
+        ])
+
+        buf.pull(3)
+        blocks = [buf.fill(3) for i in range(0, 2)]
+        numpy.testing.assert_array_equal(blocks, [
+            [[33], [44], [55]], [[33], [44], [55]]
+        ])
+
+        buf.pull(2)
+        blocks = [buf.fill(3) for i in range(0, 2)]
+        numpy.testing.assert_array_equal(blocks, [
+            [[55]], [[55]]
+        ])
+
+        buf.pull(2)
+        blocks = [buf.fill(3) for i in range(0, 2)]
+        numpy.testing.assert_array_equal(blocks, [None, None])
+
 
 
 '''

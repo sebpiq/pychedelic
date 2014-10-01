@@ -41,18 +41,21 @@ def to_raw(source):
             yield pcm.samples_to_string(source.next())
 
 
-def playback(source, frame_rate, channel_count):
-    p = pyaudio.PyAudio()
+def playback(source, frame_rate):
     buf = stream.Buffer(source)
-    def callback(in_data, frame_count, time_info, status):
-        print frame_count
-        try:
-            block_size, block = buf.pull(frame_count)
-        except StopIteration:
-            return (None, pyaudio.paComplete)
-        else:
-            return (pcm.float_to_int(block), pyaudio.paContinue)
+    channel_count = buf.fill(1).shape[1]
 
+    def callback(in_data, frame_count, time_info, status):
+        block = buf.pull(frame_count)
+        block_size = block.shape[0]
+        if block_size == frame_count:
+            return (pcm.float_to_int(block), pyaudio.paContinue)
+        elif block_size > 0:
+            return (pcm.float_to_int(block), pyaudio.paComplete)
+        else:
+            return (None, pyaudio.paComplete)
+
+    p = pyaudio.PyAudio()
     pyaudio_stream = p.open(
         format=p.get_format_from_width(2), # Only format supported right now 16bits
         channels=channel_count, 
@@ -63,7 +66,11 @@ def playback(source, frame_rate, channel_count):
 
     pyaudio_stream.start_stream()
     while pyaudio_stream.is_active():
-        time.sleep(3)
+        time.sleep(0.05)
+
+    pyaudio_stream.stop_stream()
+    pyaudio_stream.close()
+    p.terminate()
 
 
 @contextmanager
@@ -72,9 +79,3 @@ def _until_StopIteration():
         yield
     except StopIteration:
         pass
-
-
-#stream.stop_stream()
-#stream.close()
-
-#p.terminate()

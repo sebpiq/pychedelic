@@ -8,6 +8,24 @@ class Buffer(object):
         self._buffer = [] # a list of blocks of samples
         self._size = 0
 
+    def fill(self, to_size):
+        while self._size < to_size:
+            try:
+                chunk = self.source.next()
+
+            # Source exhausted
+            except StopIteration:
+                break
+
+            else:
+                self._buffer.append(chunk)
+                self._size += chunk.shape[0]
+
+        if len(self._buffer):
+            block = numpy.concatenate(self._buffer, axis=0)
+            return block
+        else: return None
+
     def pull(self, block_size, overlap=0):
         if overlap and overlap >= block_size:
             raise ValueError('overlap cannot be more than block_size')
@@ -24,8 +42,8 @@ class Buffer(object):
                     block = numpy.concatenate(self._buffer, axis=0)
                     self._buffer = []
                     self._size = 0
-                    return block.shape[0], block
-                else: return 0, None
+                    return block
+                else: return None
 
             else:
                 self._buffer.append(chunk)
@@ -48,7 +66,7 @@ class Buffer(object):
             self._size += overlap
         self._buffer = new_buffer
 
-        return block.shape[0], block
+        return block
 
 
 def reblock(source, block_size, when_exhausted='pad', overlap=0):
