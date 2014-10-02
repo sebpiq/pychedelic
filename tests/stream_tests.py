@@ -8,12 +8,19 @@ import scipy.io.wavfile as sp_wavfile
 
 from __init__ import A440_MONO_16B, A440_STEREO_16B
 from pychedelic import stream
+from pychedelic import config
 
 
 class ramp_Test(unittest.TestCase):
 
+    def tearDown(self):
+        config.frame_rate = 44100
+        config.block_size = 1024
+
     def simple_ramp_test(self):
-        ramp_gen = stream.ramp(1, (2, 1), (0, 2), frame_rate=4, block_size=2) 
+        config.frame_rate = 4
+        config.block_size = 2
+        ramp_gen = stream.ramp(1, (2, 1), (0, 2)) 
         numpy.testing.assert_array_equal(ramp_gen.next(), [[1], [1.25]])
         numpy.testing.assert_array_equal(ramp_gen.next(), [[1.5], [1.75]])
         numpy.testing.assert_array_equal(ramp_gen.next(), [[2], [1.75]])
@@ -26,8 +33,13 @@ class ramp_Test(unittest.TestCase):
 
 class read_wav_Test(unittest.TestCase):
 
+    def tearDown(self):
+        config.frame_rate = 44100
+        config.block_size = 1024
+
     def blocks_size_test(self):
-        blocks = stream.read_wav(A440_STEREO_16B, block_size=50)
+        config.block_size = 50
+        blocks = stream.read_wav(A440_STEREO_16B)
         self.assertEqual(type(blocks), types.GeneratorType)
         blocks = list(blocks)
         self.assertEqual([len(b) for b in blocks], [50, 50, 50, 50, 50, 50, 50, 50, 41])
@@ -42,7 +54,8 @@ class read_wav_Test(unittest.TestCase):
         """
         Read only a segment of the file, block_size bigger than segment to read.
         """
-        blocks = stream.read_wav(A440_MONO_16B, start=0.002, end=0.004, block_size=1000)
+        config.block_size = 1000
+        blocks = stream.read_wav(A440_MONO_16B, start=0.002, end=0.004)
         self.assertEqual(type(blocks), types.GeneratorType)
         blocks = list(blocks)
         self.assertEqual(len(blocks), 1)
@@ -57,7 +70,8 @@ class read_wav_Test(unittest.TestCase):
         """
         Ommit end, not an exact count of block_size.
         """
-        blocks = stream.read_wav(A440_MONO_16B, start=0.002, block_size=20)
+        config.block_size = 20
+        blocks = stream.read_wav(A440_MONO_16B, start=0.002)
         self.assertEqual(type(blocks), types.GeneratorType)
         blocks = list(blocks)
         self.assertEqual([len(b) for b in blocks], [20] * 17 + [13])
@@ -81,8 +95,7 @@ class to_wav_file_Test(unittest.TestCase):
                 blocks.append(block)
                 yield block
 
-        sink = stream.to_wav_file(source(), temp_file, 44100)
-        #list(sink) # pull audio
+        sink = stream.to_wav_file(source(), temp_file)
 
         expected = numpy.concatenate(blocks)
         frame_rate, actual = sp_wavfile.read(temp_file.name)
@@ -107,7 +120,7 @@ class to_wav_file_Test(unittest.TestCase):
             while True:
                 yield source.next() * 2
 
-        sink = stream.to_wav_file(double(source()), temp_file, 44100)
+        sink = stream.to_wav_file(double(source()), temp_file)
 
         expected = numpy.concatenate(blocks) * 2
         frame_rate, actual = sp_wavfile.read(temp_file.name)
