@@ -10,7 +10,67 @@ except ImportError:
 from core import wav
 from core import pcm
 from core import buffering
+import chunk
 from pychedelic import config
+
+
+def ramp(initial, *values):
+    values = list(values)
+    previous_target = initial
+
+    while len(values):
+        target, time = values.pop(0)
+        frame_count = round(time * config.frame_rate)
+        step = (target - previous_target) / float(frame_count)
+
+        counter = 0
+        acc = previous_target - step
+        while counter < frame_count:
+            next_size = min(frame_count - counter, config.block_size)
+            block = numpy.ones((next_size, 1)) * step
+            block = acc + numpy.cumsum(block, axis=0)
+            counter += next_size
+            acc = block[-1,0]
+            yield block
+        previous_target = target
+    yield numpy.array([[target]], dtype='float32')
+
+
+class Mixer(object):
+
+    def __init__(self):
+        self._sources = []
+
+    def plug(self, gen):
+        self._sources.append(buffering.Buffer(gen))
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        block_channels = []
+        empty_sources = []
+
+        # Iterating through all the sources and do the mixing
+        for buf in self._sources:
+            block = buf.pull(config.block_size)
+
+            if block is None:
+                empty_sources.append(buf)
+            else:
+                # If the source is empty, the buffer might return a smaller block than expected 
+                block = chunk.fix_frame_count(block, config.block_size, 0) 
+                for ch in range(0, block.shape[1]):
+                    if len(block_channels) < (ch + 1):
+                        block_channels.append(numpy.zeros(config.block_size, dtype='float32'))
+                    block_channels[ch] = numpy.sum([block_channels[ch], block[:,ch]], axis=0)
+                
+        # Forget empty sources
+        for buf in empty_sources:
+            self._sources.remove(buf)
+        if len(self._sources) is 0: raise StopIteration
+
+        return numpy.column_stack(block_channels)
 
 
 def read_wav(f, start=0, end=None):
@@ -23,28 +83,6 @@ def read_wav(f, start=0, end=None):
         block = wav.read_block(wfile, next_size)
         read += next_size
         yield block
-
-
-def ramp(initial, *values):
-    values = list(values)
-    previous_target = initial
-
-    while len(values):
-        target, time = values.pop(0)
-        sample_count = round(time * config.frame_rate)
-        step = (target - previous_target) / float(sample_count)
-
-        counter = 0
-        acc = previous_target - step
-        while counter < sample_count:
-            next_size = min(sample_count - counter, config.block_size)
-            block = numpy.ones((next_size, 1)) * step
-            block = acc + numpy.cumsum(block, axis=0)
-            counter += next_size
-            acc = block[-1,0]
-            yield block
-        previous_target = target
-    yield numpy.array([[target]], dtype='float32')
 
 
 def to_wav_file(source, f):

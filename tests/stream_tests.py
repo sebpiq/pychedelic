@@ -31,6 +31,55 @@ class ramp_Test(unittest.TestCase):
         self.assertRaises(StopIteration, ramp_gen.next)
 
 
+class Mixer_test(unittest.TestCase):
+
+    def tearDown(self):
+        config.frame_rate = 44100
+        config.block_size = 1024
+
+    def dynamic_mixing_test(self):
+        config.frame_rate = 4
+        config.block_size = 2
+
+        def source_stereo1():
+            for i in range(0, 3):
+                yield numpy.ones((1, 2)) * 1 * (i + 1)
+
+        def source_stereo2():
+            for i in range(0, 2):
+                yield numpy.ones((2, 2)) * 0.1 * (i + 1)
+
+        def source_mono1():
+            for i in range(0, 3):
+                yield numpy.ones((3, 1)) * 0.01 * (i + 1)
+
+        mixer = stream.Mixer()
+        mixer.plug(source_stereo1())
+        mixer.plug(source_mono1())
+        numpy.testing.assert_array_equal(mixer.next(), [
+            [1 + 0.01, 1],
+            [2 + 0.01, 2]
+        ])
+        numpy.testing.assert_array_equal(mixer.next(), [
+            [3 + 0.01, 3],
+            [0.02, 0]
+        ])
+        numpy.testing.assert_array_equal(mixer.next(), [
+            [0.02],
+            [0.02]
+        ])
+        mixer.plug(source_stereo2())
+        numpy.testing.assert_array_equal(mixer.next(), [
+            [0.1 + 0.03, 0.1],
+            [0.1 + 0.03, 0.1]
+        ])
+        numpy.testing.assert_array_equal(mixer.next(), [
+            [0.2 + 0.03, 0.2],
+            [0.2, 0.2]
+        ])
+        self.assertRaises(StopIteration, mixer.next)
+
+
 class read_wav_Test(unittest.TestCase):
 
     def tearDown(self):
@@ -101,7 +150,6 @@ class to_wav_file_Test(unittest.TestCase):
         frame_rate, actual = sp_wavfile.read(temp_file.name)
         actual = numpy.array([actual / float(2**15)]).transpose()
         numpy.testing.assert_array_equal(expected.round(4), actual.round(4))
-
 
     def chain_test(self):
         """

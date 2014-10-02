@@ -38,8 +38,8 @@ if __name__ == '__main__':
             yield source.next() + val
 
     def ramp(start, end, duration):
-        samp_count = duration * frame_rate
-        samples = numpy.linspace(start, end, samp_count).reshape((samp_count, 1))
+        frame_count = duration * frame_rate
+        samples = numpy.linspace(start, end, frame_count).reshape((frame_count, 1))
         count = 0
         while True:
             yield samples[count*44100:(count+1)*44100,0:1]

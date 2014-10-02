@@ -11,15 +11,15 @@ class Buffer(object):
     def fill(self, to_size):
         while self._size < to_size:
             try:
-                chunk = self.source.next()
+                block = self.source.next()
 
             # Source exhausted
             except StopIteration:
                 break
 
             else:
-                self._buffer.append(chunk)
-                self._size += chunk.shape[0]
+                self._buffer.append(block)
+                self._size += block.shape[0]
 
         if len(self._buffer):
             block = numpy.concatenate(self._buffer, axis=0)
@@ -30,11 +30,10 @@ class Buffer(object):
         if overlap and overlap >= block_size:
             raise ValueError('overlap cannot be more than block_size')
 
-        # First, get as much chunk of data as needed to
-        # make a block.
+        # First, get as much blocks of data as needed.
         while self._size < block_size:
             try:
-                chunk = self.source.next()
+                block = self.source.next()
 
             # Source exhausted
             except StopIteration:
@@ -46,11 +45,11 @@ class Buffer(object):
                 else: return None
 
             else:
-                self._buffer.append(chunk)
-                self._size += chunk.shape[0]
+                self._buffer.append(block)
+                self._size += block.shape[0]
         
         # If there's too much data in the buffer, we need
-        # to cut the last chunk and keep the remainder for next iteration
+        # to cut the last block and keep the remainder for next iteration
         new_buffer = []
         extra = self._size - block_size
         if extra > 0:
