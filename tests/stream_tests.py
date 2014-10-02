@@ -10,6 +10,20 @@ from __init__ import A440_MONO_16B, A440_STEREO_16B
 from pychedelic import stream
 
 
+class ramp_Test(unittest.TestCase):
+
+    def simple_ramp_test(self):
+        ramp_gen = stream.ramp(1, (2, 1), (0, 2), frame_rate=4, block_size=2) 
+        numpy.testing.assert_array_equal(ramp_gen.next(), [[1], [1.25]])
+        numpy.testing.assert_array_equal(ramp_gen.next(), [[1.5], [1.75]])
+        numpy.testing.assert_array_equal(ramp_gen.next(), [[2], [1.75]])
+        numpy.testing.assert_array_equal(ramp_gen.next(), [[1.5], [1.25]])
+        numpy.testing.assert_array_equal(ramp_gen.next(), [[1], [0.75]])
+        numpy.testing.assert_array_equal(ramp_gen.next(), [[0.5], [0.25]])
+        numpy.testing.assert_array_equal(ramp_gen.next(), [[0]])
+        self.assertRaises(StopIteration, ramp_gen.next)
+
+
 class read_wav_Test(unittest.TestCase):
 
     def blocks_size_test(self):

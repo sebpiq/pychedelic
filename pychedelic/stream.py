@@ -24,7 +24,33 @@ def read_wav(f, start=0, end=None, block_size=1024):
         yield block
 
 
-def to_wav_file(source, f, frame_rate):
+def ramp(initial, *values, **kwargs):
+    opts = dict(block_size=1024, frame_rate=44100)
+    opts.update(kwargs)
+    values = list(values)
+    frame_rate = opts['frame_rate']
+    block_size = opts['block_size']
+
+    previous_target = initial
+    while len(values):
+        target, time = values.pop(0)
+        sample_count = round(time * frame_rate)
+        step = (target - previous_target) / float(sample_count)
+
+        counter = 0
+        acc = previous_target - step
+        while counter < sample_count:
+            next_size = min(sample_count - counter, block_size)
+            block = numpy.ones((next_size, 1)) * step
+            block = acc + numpy.cumsum(block, axis=0)
+            counter += next_size
+            acc = block[-1,0]
+            yield block
+        previous_target = target
+    yield numpy.array([[target]], dtype='float32')
+
+
+def to_wav_file(source, f, frame_rate=44100):
     with _until_StopIteration():
         block = source.next()
         channel_count = block.shape[1]
