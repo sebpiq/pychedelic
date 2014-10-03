@@ -5,12 +5,12 @@ import numpy
 try:
     import pyaudio
 except ImportError:
-    print 'Please install pyAudio if you want to play back audio'
+    print('Please install pyAudio if you want to play back audio')
 
-from core import wav
-from core import pcm
-from core import buffering
-import chunk
+from .core import wav
+from .core import pcm
+from .core import buffering
+from . import chunk
 from pychedelic import config
 
 
@@ -39,20 +39,20 @@ def ramp(initial, *values):
 class Mixer(object):
 
     def __init__(self):
-        self._sources = []
+        self.sources = []
 
     def plug(self, gen):
-        self._sources.append(buffering.Buffer(gen))
+        self.sources.append(buffering.Buffer(gen))
 
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         block_channels = []
         empty_sources = []
 
         # Iterating through all the sources and do the mixing
-        for buf in self._sources:
+        for buf in self.sources:
             block = buf.pull(config.block_size)
 
             if block is None:
@@ -67,8 +67,8 @@ class Mixer(object):
                 
         # Forget empty sources
         for buf in empty_sources:
-            self._sources.remove(buf)
-        if len(self._sources) is 0: raise StopIteration
+            self.sources.remove(buf)
+        if len(self.sources) is 0: raise StopIteration
 
         return numpy.column_stack(block_channels)
 
@@ -87,19 +87,19 @@ def read_wav(f, start=0, end=None):
 
 def to_wav_file(source, f):
     with _until_StopIteration():
-        block = source.next()
+        block = next(source)
         channel_count = block.shape[1]
         wfile, infos = wav.open_write_mode(f, config.frame_rate, channel_count)
 
         while True:
             wav.write_block(wfile, block)
-            block = source.next()
+            block = next(source)
 
 
 def to_raw(source):
     with _until_StopIteration(): 
         while True:
-            yield pcm.samples_to_string(source.next())
+            yield pcm.samples_to_string(next(source))
 
 
 def playback(source):

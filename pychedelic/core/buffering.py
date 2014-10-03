@@ -11,7 +11,7 @@ class Buffer(object):
     def fill(self, to_size):
         while self._size < to_size:
             try:
-                block = self.source.next()
+                block = next(self.source)
 
             # Source exhausted
             except StopIteration:
@@ -33,7 +33,7 @@ class Buffer(object):
         # First, get as much blocks of data as needed.
         while self._size < block_size:
             try:
-                block = self.source.next()
+                block = next(self.source)
 
             # Source exhausted
             except StopIteration:

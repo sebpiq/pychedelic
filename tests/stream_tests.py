@@ -6,7 +6,7 @@ import unittest
 import numpy
 import scipy.io.wavfile as sp_wavfile
 
-from __init__ import A440_MONO_16B, A440_STEREO_16B
+from .__init__ import A440_MONO_16B, A440_STEREO_16B
 from pychedelic import stream
 from pychedelic import config
 
@@ -21,14 +21,14 @@ class ramp_Test(unittest.TestCase):
         config.frame_rate = 4
         config.block_size = 2
         ramp_gen = stream.ramp(1, (2, 1), (0, 2)) 
-        numpy.testing.assert_array_equal(ramp_gen.next(), [[1], [1.25]])
-        numpy.testing.assert_array_equal(ramp_gen.next(), [[1.5], [1.75]])
-        numpy.testing.assert_array_equal(ramp_gen.next(), [[2], [1.75]])
-        numpy.testing.assert_array_equal(ramp_gen.next(), [[1.5], [1.25]])
-        numpy.testing.assert_array_equal(ramp_gen.next(), [[1], [0.75]])
-        numpy.testing.assert_array_equal(ramp_gen.next(), [[0.5], [0.25]])
-        numpy.testing.assert_array_equal(ramp_gen.next(), [[0]])
-        self.assertRaises(StopIteration, ramp_gen.next)
+        numpy.testing.assert_array_equal(next(ramp_gen), [[1], [1.25]])
+        numpy.testing.assert_array_equal(next(ramp_gen), [[1.5], [1.75]])
+        numpy.testing.assert_array_equal(next(ramp_gen), [[2], [1.75]])
+        numpy.testing.assert_array_equal(next(ramp_gen), [[1.5], [1.25]])
+        numpy.testing.assert_array_equal(next(ramp_gen), [[1], [0.75]])
+        numpy.testing.assert_array_equal(next(ramp_gen), [[0.5], [0.25]])
+        numpy.testing.assert_array_equal(next(ramp_gen), [[0]])
+        self.assertRaises(StopIteration, next, ramp_gen)
 
 
 class Mixer_test(unittest.TestCase):
@@ -56,28 +56,28 @@ class Mixer_test(unittest.TestCase):
         mixer = stream.Mixer()
         mixer.plug(source_stereo1())
         mixer.plug(source_mono1())
-        numpy.testing.assert_array_equal(mixer.next(), [
+        numpy.testing.assert_array_equal(next(mixer), [
             [1 + 0.01, 1],
             [2 + 0.01, 2]
         ])
-        numpy.testing.assert_array_equal(mixer.next(), [
+        numpy.testing.assert_array_equal(next(mixer), [
             [3 + 0.01, 3],
             [0.02, 0]
         ])
-        numpy.testing.assert_array_equal(mixer.next(), [
+        numpy.testing.assert_array_equal(next(mixer), [
             [0.02],
             [0.02]
         ])
         mixer.plug(source_stereo2())
-        numpy.testing.assert_array_equal(mixer.next(), [
+        numpy.testing.assert_array_equal(next(mixer), [
             [0.1 + 0.03, 0.1],
             [0.1 + 0.03, 0.1]
         ])
-        numpy.testing.assert_array_equal(mixer.next(), [
+        numpy.testing.assert_array_equal(next(mixer), [
             [0.2 + 0.03, 0.2],
             [0.2, 0.2]
         ])
-        self.assertRaises(StopIteration, mixer.next)
+        self.assertRaises(StopIteration, next, mixer)
 
 
 class read_wav_Test(unittest.TestCase):
@@ -166,7 +166,7 @@ class to_wav_file_Test(unittest.TestCase):
 
         def double(source):
             while True:
-                yield source.next() * 2
+                yield next(source) * 2
 
         sink = stream.to_wav_file(double(source()), temp_file)
 

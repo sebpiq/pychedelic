@@ -1,7 +1,7 @@
 # TODO: support for 8-bit wavs ?
 import wave
 
-import pcm
+from . import pcm
 
 
 def open_write_mode(f, frame_rate, channel_count):
