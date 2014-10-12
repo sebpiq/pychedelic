@@ -24,7 +24,7 @@ class Buffer(object):
         if len(self._buffer):
             block = numpy.concatenate(self._buffer, axis=0)
             return block
-        else: return None
+        else: raise StopIteration
 
     def pull(self, block_size, overlap=0):
         if overlap and overlap >= block_size:
@@ -42,7 +42,7 @@ class Buffer(object):
                     self._buffer = []
                     self._size = 0
                     return block
-                else: return None
+                else: raise StopIteration
 
             else:
                 self._buffer.append(block)

@@ -54,8 +54,7 @@ class Buffer_Test(unittest.TestCase):
 
         block = buf.pull(3)
         numpy.testing.assert_array_equal(block, [[9, 9], [10, 10]])
-        self.assertEqual(buf.pull(2), None)
-        self.assertEqual(buf.pull(2), None)
+        self.assertRaises(StopIteration, buf.pull, 2)
 
     def overlap_cut_test(self):
         """
@@ -108,5 +107,4 @@ class Buffer_Test(unittest.TestCase):
         ])
 
         buf.pull(2)
-        blocks = [buf.fill(3) for i in range(0, 2)]
-        numpy.testing.assert_array_equal(blocks, [None, None])
+        self.assertRaises(StopIteration, buf.fill, 3)

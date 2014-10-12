@@ -53,9 +53,9 @@ class Mixer(object):
 
         # Iterating through all the sources and do the mixing
         for buf in self.sources:
-            block = buf.pull(config.block_size)
-
-            if block is None:
+            try:
+                block = buf.pull(config.block_size)
+            except StopIteration:
                 empty_sources.append(buf)
             else:
                 # If the source is empty, the buffer might return a smaller block than expected 
@@ -71,6 +71,7 @@ class Mixer(object):
         if len(self.sources) is 0: raise StopIteration
 
         return numpy.column_stack(block_channels)
+Mixer.next = Mixer.__next__ # Compatibility Python 2
 
 
 def read_wav(f, start=0, end=None):
