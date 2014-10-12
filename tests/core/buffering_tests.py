@@ -56,6 +56,16 @@ class Buffer_Test(unittest.TestCase):
         numpy.testing.assert_array_equal(block, [[9, 9], [10, 10]])
         self.assertRaises(StopIteration, buf.pull, 2)
 
+    def pad_test(self):
+        def gen():
+            yield numpy.tile(numpy.arange(0, 5), (2, 1)).transpose()
+        buf = Buffer(gen())
+        block = buf.pull(8, pad=True)
+        numpy.testing.assert_array_equal(block, [
+            [0, 0], [1, 1], [2, 2], [3, 3],
+            [4, 4], [0, 0], [0, 0], [0, 0]
+        ])
+
     def overlap_cut_test(self):
         """
         Test overlap with pulled blocks smaller than source blocks.

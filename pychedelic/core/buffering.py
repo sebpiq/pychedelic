@@ -26,7 +26,7 @@ class Buffer(object):
             return block
         else: raise StopIteration
 
-    def pull(self, block_size, overlap=0):
+    def pull(self, block_size, overlap=0, pad=False):
         if overlap and overlap >= block_size:
             raise ValueError('overlap cannot be more than block_size')
 
@@ -41,7 +41,10 @@ class Buffer(object):
                     block = numpy.concatenate(self._buffer, axis=0)
                     self._buffer = []
                     self._size = 0
-                    return block
+                    if pad is True:
+                        zeros = numpy.zeros((block_size - block.shape[0], block.shape[1]))
+                        return numpy.vstack([block, zeros])
+                    else: return block
                 else: raise StopIteration
 
             else:
