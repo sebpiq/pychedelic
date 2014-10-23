@@ -1,4 +1,5 @@
 import time
+import math
 from contextlib import contextmanager
 
 import numpy
@@ -36,13 +37,54 @@ def ramp(initial, *values):
     yield numpy.array([[target]], dtype='float32')
 
 
+class Resampler(object):
+
+    def __init__(self, source):
+        self.source = buffering.Buffer(source)
+        self.set_ratio(1)
+
+    def set_ratio(self, val):
+        self.ratio = val
+        self.frame_in = 0
+        self.frame_out = -val
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.ratio == 1: return self.source.pull(config.block_size)
+        overlap = 1 # We always keep the last `frame_in` for next iteration
+
+        x_out = self.frame_out + (numpy.ones(config.block_size) * self.ratio).cumsum()
+        x_in = numpy.arange(self.frame_in, math.ceil(x_out[-1]) + 1)
+
+        self.frame_out = x_out[-1]
+        next_size = math.ceil(len(x_in))
+        # If next `frame_out` is in interval [x_in[-2], x_in[-1]),
+        # it means we'll need x_in[-2] for next iteration
+        overlap += (self.frame_out + self.ratio) < x_in[-1]
+        self.frame_in = x_in[-1] + 1 - overlap
+
+        block_in = self.source.pull(next_size, overlap=overlap, pad=True)
+        frame_count = block_in.shape[0]
+        channel_count = block_in.shape[1]
+
+        block_out = []
+        for block_ch in block_in.T:
+            block_out.append(numpy.interp(x_out, x_in, block_ch))
+        block_out = numpy.vstack(block_out).transpose()
+
+        return block_out
+Resampler.next = Resampler.__next__ # Compatibility Python 2
+
+
 class Mixer(object):
 
     def __init__(self):
         self.sources = []
 
-    def plug(self, gen):
-        self.sources.append(buffering.Buffer(gen))
+    def plug(self, source):
+        self.sources.append(buffering.Buffer(source))
 
     def __iter__(self):
         return self

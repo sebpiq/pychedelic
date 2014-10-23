@@ -31,6 +31,256 @@ class ramp_Test(unittest.TestCase):
         self.assertRaises(StopIteration, next, ramp_gen)
 
 
+class Resampler_test(unittest.TestCase):
+
+    def tearDown(self):
+        config.frame_rate = 44100
+        config.block_size = 1024
+
+    def upsample1_test(self):
+        """
+        Testing upsampling with the 2 following configurations :
+        IN:  |     |     |     .
+        OUT: | | | | | | | . . .
+
+        IN:  |     |     |     |
+        OUT: . | | | | | | | . .
+        """
+        config.block_size = 7
+
+        def gen():
+            """
+            [[0], [2], [4]] [[6], [8], [10]] ...
+            """
+            for i in range(0, 4):
+                yield numpy.arange(i * 2 * 3, (i + 1) * 2 * 3, 2).reshape(3, 1)
+
+        resampler = stream.Resampler(gen())
+        resampler.set_ratio(1 / 3.0)
+
+        # IN:  0     1     2
+        # OUT: 0 1 2 3 4 5 6
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[0], [1 * 2.0/3], [2 * 2.0/3], [2], [4 * 2.0/3], [5 * 2.0/3], [4]], 8)
+        )
+        # IN:  2     3     4     5
+        # OUT:   7 8 9 a b c d
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[7 * 2.0/3], [8 * 2.0/3], [6], [10 * 2.0/3], [11 * 2.0/3], [8], [13 * 2.0/3]], 8)
+        )
+        # IN:  4     5     6     7
+        # OUT:     e f g h i j k
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[14 * 2.0/3], [10], [16 * 2.0/3], [17 * 2.0/3], [12], [19 * 2.0/3], [20 * 2.0/3]], 8)
+        )
+        # IN:  7     8     9
+        # OUT: l m n o p q r
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[14], [22 * 2.0/3], [23 * 2.0/3], [16], [25 * 2.0/3], [26 * 2.0/3], [18]], 8)
+        )
+
+    def upsample2_test(self):
+        """
+        Here testing upsampling with the following configuration (+ testing stereo):
+        IN:  |     |
+        OUT: |   |   .
+        """
+        config.block_size = 2
+
+        def gen():
+            """
+            [[0, 0], [-2, 2], [-4, 4]] [[-6, 6], [-8, 8], [-10, 10]] ...
+            """
+            for i in range(0, 4):
+                block_in = numpy.vstack([
+                    numpy.arange(-i * 2 * 3, -(i + 1) * 2 * 3, -2),
+                    numpy.arange(i * 2 * 3, (i + 1) * 2 * 3, 2)
+                ]).transpose()
+                yield block_in
+
+        resampler = stream.Resampler(gen())
+        ratio = 2 / 3.0
+        resampler.set_ratio(ratio)
+
+
+        # IN:  0     1
+        # OUT: 0   1   .
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[0, 0], [1 * -2 * ratio, 1 * 2 * ratio]], 8)
+        )
+        # IN:  1     2
+        # OUT:   2   3
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[2 * -2 * ratio, 2 * 2 * ratio], [3 * -2 * ratio, 3 * 2 * ratio]], 8)
+        )
+
+
+    def downsample1_test(self):
+        """
+        Testing downsampling with the following configurations:
+        IN:  |  |  |  |  .  .
+        OUT: |      |      .
+
+        IN:  |   |   |   |
+        OUT:   |      |  
+        """
+        config.block_size = 2
+
+        def gen():
+            """
+            [[0], [0.5], [1]] [[1.5], [2], [2.5]] ...
+            """
+            for i in range(0, 10):
+                yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
+
+        resampler = stream.Resampler(gen())
+        ratio = 7/3.0
+        resampler.set_ratio(ratio)
+
+        # IN:  0  1  2  3  .  .
+        # OUT: 0      1      .
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[0], [1 * 0.5 * ratio]], 8)
+        )
+        # IN:  3  4  5  6  7
+        # OUT:      2      3
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[2 * 0.5 * ratio], [3 * 0.5 * ratio]], 8)
+        )
+        # IN:  9  a  b  c
+        # OUT:  4      5
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[4 * 0.5 * ratio], [5 * 0.5 * ratio]], 8)
+        )
+
+    def downsample2_test(self):
+        """
+        Testing downsampling with the following configuration:
+        # IN:  | | | | | | | | |
+        # OUT: |       |       |
+        """
+        config.block_size = 3
+
+        def gen():
+            """
+            [[0], [0.5], [1]] [[1.5], [2], [2.5]] ...
+            """
+            for i in range(0, 10):
+                yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
+
+        resampler = stream.Resampler(gen())
+        ratio = 4
+        resampler.set_ratio(ratio)
+
+        # IN:  0 1 2 3 4 5 6 7 8
+        # OUT: 0       1       2
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[0], [1 * 0.5 * ratio], [2 * 0.5 * ratio]], 8)
+        )
+        # ...
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[3 * 0.5 * ratio], [4 * 0.5 * ratio], [5 * 0.5 * ratio]], 8)
+        )
+
+    def ratio1_test(self):
+        """
+        Ratio 1 test.
+        """
+        config.block_size = 3
+
+        def gen():
+            """
+            [[0], [0.5], [1]] [[1.5], [2], [2.5]] ...
+            """
+            for i in range(0, 10):
+                yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
+
+        resampler = stream.Resampler(gen())
+
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[0], [1 * 0.5], [2 * 0.5]], 8)
+        )
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[3 * 0.5], [4 * 0.5], [5 * 0.5]], 8)
+        )    
+
+    def sanity_check_test(self):
+        """
+        Test that something's not fundamentally wrong.
+        """
+        def zcr_f0(samples):
+            """
+            Calculate frequency using zero-crossings method.
+            """
+            frame_rate = config.frame_rate
+            frame_count = len(samples)
+            
+            crossings = (numpy.diff(numpy.sign(samples)) != 0)
+            time = (numpy.ones(frame_count) / frame_rate).cumsum() - 1 / frame_rate
+            half_oscillation_times = numpy.diff(time[crossings])
+            self.assertTrue(half_oscillation_times.std() < 0.00005)
+            return 0.5 / half_oscillation_times.mean()
+
+        frame_count = 44100 * 20
+        config.block_size = frame_count
+
+        f0 = 440
+        ratio = 0.99999
+
+        time = numpy.arange(0, frame_count) / float(config.frame_rate)
+        samples = numpy.cos(2 * numpy.pi * f0 * time)
+        def gen():
+            yield samples.reshape(len(samples), 1)
+        resampler = stream.Resampler(gen())
+        resampler.set_ratio(ratio)
+        self.assertEqual(round(zcr_f0(samples), 3), round(f0, 3))
+
+        samples2 = next(resampler)[:,0]
+        self.assertEqual(round(zcr_f0(samples2), 3), round(f0 * ratio, 3))
+
+    def source_exhausted_test(self):
+        """
+        Testing when the source is exhausted:
+        # IN:  | | | | | | | | | | | | x
+        # OUT: |       |       |       x
+        """
+        config.block_size = 2
+
+        def gen():
+            """
+            [[0], [0.5], [1]] [[1.5], [2], [2.5]] ...
+            """
+            for i in range(0, 4):
+                yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
+
+        resampler = stream.Resampler(gen())
+        ratio = 4
+        resampler.set_ratio(ratio)
+
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[0], [1 * 0.5 * ratio]], 8)
+        )
+        numpy.testing.assert_array_equal(
+            next(resampler).round(8),
+            numpy.round([[2 * 0.5 * ratio], [0]], 8)
+        )
+        self.assertRaises(StopIteration, next, resampler)
+
+
 class Mixer_test(unittest.TestCase):
 
     def tearDown(self):
