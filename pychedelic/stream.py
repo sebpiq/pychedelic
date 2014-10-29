@@ -11,6 +11,7 @@ except ImportError:
 from .core import wav
 from .core import pcm
 from .core import buffering
+from .core import scheduling
 from . import chunk
 from pychedelic import config
 
@@ -21,13 +22,13 @@ def ramp(initial, *values):
 
     while len(values):
         target, time = values.pop(0)
-        frame_count = round(time * config.frame_rate)
-        step = (target - previous_target) / float(frame_count)
+        current_time = round(time * config.frame_rate)
+        step = (target - previous_target) / float(current_time)
 
         counter = 0
         acc = previous_target - step
-        while counter < frame_count:
-            next_size = min(frame_count - counter, config.block_size)
+        while counter < current_time:
+            next_size = min(current_time - counter, config.block_size)
             block = numpy.ones((next_size, 1)) * step
             block = acc + numpy.cumsum(block, axis=0)
             counter += next_size
@@ -66,7 +67,7 @@ class Resampler(object):
         self.frame_in = x_in[-1] + 1 - overlap
 
         block_in = self.source.pull(next_size, overlap=overlap, pad=True)
-        frame_count = block_in.shape[0]
+        current_time = block_in.shape[0]
         channel_count = block_in.shape[1]
 
         block_out = []
@@ -82,6 +83,7 @@ class Mixer(object):
 
     def __init__(self):
         self.sources = []
+        self.clock = scheduling.Clock()
 
     def plug(self, source):
         self.sources.append(buffering.Buffer(source))
@@ -92,19 +94,19 @@ class Mixer(object):
     def __next__(self):
         block_channels = []
         empty_sources = []
+        next_size = self.clock.advance(config.block_size)
 
         # Iterating through all the sources and do the mixing
         for buf in self.sources:
             try:
-                block = buf.pull(config.block_size)
+                block = buf.pull(next_size, pad=True)
             except StopIteration:
                 empty_sources.append(buf)
             else:
                 # If the source is empty, the buffer might return a smaller block than expected 
-                block = chunk.fix_frame_count(block, config.block_size, 0) 
                 for ch in range(0, block.shape[1]):
                     if len(block_channels) < (ch + 1):
-                        block_channels.append(numpy.zeros(config.block_size, dtype='float32'))
+                        block_channels.append(numpy.zeros(next_size, dtype='float32'))
                     block_channels[ch] = numpy.sum([block_channels[ch], block[:,ch]], axis=0)
                 
         # Forget empty sources
@@ -118,11 +120,11 @@ Mixer.next = Mixer.__next__ # Compatibility Python 2
 
 def read_wav(f, start=0, end=None):
     wfile, infos = wav.open_read_mode(f)
-    frame_count = wav.seek(wfile, start, end)
+    current_time = wav.seek(wfile, start, end)
 
     read = 0
-    while read < frame_count:
-        next_size = min(config.block_size, frame_count - read)
+    while read < current_time:
+        next_size = min(config.block_size, current_time - read)
         block = wav.read_block(wfile, next_size)
         read += next_size
         yield block
@@ -149,10 +151,10 @@ def playback(source):
     buf = buffering.Buffer(source)
     channel_count = buf.fill(1).shape[1]
 
-    def callback(in_data, frame_count, time_info, status):
-        block = buf.pull(frame_count)
+    def callback(in_data, current_time, time_info, status):
+        block = buf.pull(current_time)
         block_size = block.shape[0]
-        if block_size == frame_count:
+        if block_size == current_time:
             return (pcm.float_to_int(block), pyaudio.paContinue)
         elif block_size > 0:
             return (pcm.float_to_int(block), pyaudio.paComplete)

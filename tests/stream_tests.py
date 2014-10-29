@@ -287,7 +287,7 @@ class Mixer_test(unittest.TestCase):
         config.frame_rate = 44100
         config.block_size = 1024
 
-    def dynamic_mixing_test(self):
+    def dynamic_plug_test(self):
         config.frame_rate = 4
         config.block_size = 2
 
@@ -324,6 +324,36 @@ class Mixer_test(unittest.TestCase):
             [0.1 + 0.03, 0.1]
         ])
         numpy.testing.assert_array_equal(next(mixer), [
+            [0.2 + 0.03, 0.2],
+            [0.2, 0.2]
+        ])
+        self.assertRaises(StopIteration, next, mixer)
+
+    def schedule_plug_test(self):
+        config.frame_rate = 4
+        config.block_size = 4
+
+        def source_stereo():
+            for i in range(0, 2):
+                yield numpy.ones((2, 2)) * 0.1 * (i + 1)
+
+        def source_mono():
+            for i in range(0, 3):
+                yield numpy.ones((3, 1)) * 0.01 * (i + 1)
+
+        mixer = stream.Mixer()
+        mixer.plug(source_mono())
+        mixer.clock.run_after(1.5, mixer.plug, args=[source_stereo()])
+
+        numpy.testing.assert_array_equal(next(mixer), [
+            [0.01], [0.01], [0.01], [0.02]
+        ])
+        numpy.testing.assert_array_equal(next(mixer), [
+            [0.02], [0.02]
+        ])
+        numpy.testing.assert_array_equal(next(mixer), [
+            [0.1 + 0.03, 0.1],
+            [0.1 + 0.03, 0.1],
             [0.2 + 0.03, 0.2],
             [0.2, 0.2]
         ])
