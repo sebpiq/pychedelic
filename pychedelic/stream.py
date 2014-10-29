@@ -88,6 +88,9 @@ class Mixer(object):
     def plug(self, source):
         self.sources.append(buffering.Buffer(source))
 
+    def unplug(self, source):
+        self.sources = filter(lambda buf: not(buf.source is source), self.sources)
+
     def __iter__(self):
         return self
 

@@ -359,6 +359,35 @@ class Mixer_test(unittest.TestCase):
         ])
         self.assertRaises(StopIteration, next, mixer)
 
+    def unplug_test(self):
+        config.frame_rate = 4
+        config.block_size = 2
+
+        def source_stereo():
+            for i in range(0, 3):
+                yield numpy.ones((1, 2)) * 1 * (i + 1)
+
+        def source_mono():
+            for i in range(0, 3):
+                yield numpy.ones((3, 1)) * 0.01 * (i + 1)
+
+        mixer = stream.Mixer()
+        src1 = source_mono()
+        src2 = source_stereo()
+        mixer.plug(src2)
+        mixer.plug(src1)
+        numpy.testing.assert_array_equal(next(mixer), [
+            [1 + 0.01, 1], [2 + 0.01, 2]
+        ])
+        mixer.unplug(src2)
+        numpy.testing.assert_array_equal(next(mixer), [
+            [0.01], [0.02]
+        ])
+        numpy.testing.assert_array_equal(next(mixer), [
+            [0.02], [0.02]
+        ])
+        mixer.unplug(src1)
+        self.assertRaises(StopIteration, next, mixer)
 
 class read_wav_Test(unittest.TestCase):
 
