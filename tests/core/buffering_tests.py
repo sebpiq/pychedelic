@@ -99,6 +99,8 @@ class Buffer_Test(unittest.TestCase):
             for i in range(6):
                 yield numpy.array([[i * 11]])
         buf = Buffer(gen())
+        # Calling several times without should return the same,
+        # as buffer is already filled.
         blocks = [buf.fill(2) for i in range(0, 2)]
         numpy.testing.assert_array_equal(blocks, [
             [[0], [11]], [[0], [11]]
@@ -118,3 +120,12 @@ class Buffer_Test(unittest.TestCase):
 
         buf.pull(2)
         self.assertRaises(StopIteration, buf.fill, 3)
+
+    def pull_all_test(self):
+        def gen():
+            for i in range(6):
+                yield numpy.array([[i * 11]])
+        buf = Buffer(gen())
+        numpy.testing.assert_array_equal(buf.pull_all(), [
+            [0], [11], [22], [33], [44], [55]
+        ])

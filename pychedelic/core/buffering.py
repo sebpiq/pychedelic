@@ -69,3 +69,12 @@ class Buffer(object):
         self._buffer = new_buffer
 
         return block
+
+    def pull_all(self):
+        blocks = []
+        while True:
+            try:
+                blocks.append(next(self.source))
+            except StopIteration:
+                break
+        return numpy.concatenate(blocks, axis=0)
