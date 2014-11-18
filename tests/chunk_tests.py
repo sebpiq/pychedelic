@@ -35,4 +35,5 @@ class fix_frame_count_Test(unittest.TestCase):
 
     def crop_test(self):
         samples = numpy.array([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]).transpose()
-        self.assertRaises(ValueError, chunk.fix_frame_count, samples, 4, 0)
+        cropped_samples = numpy.array([[0, 1, 2], [5, 6, 7]]).transpose()
+        numpy.testing.assert_array_equal(chunk.fix_frame_count(samples, 3, 0), cropped_samples)
