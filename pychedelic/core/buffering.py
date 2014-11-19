@@ -38,7 +38,7 @@ class Buffer(object):
             # Source exhausted
             except StopIteration:
                 if self._blocks:
-                    block_out = self._make_block_out(self._size)
+                    block_out = self._make_block_out(int(self._size))
                     self._blocks = []
                     self._size = 0
                     if pad is True:
@@ -86,7 +86,6 @@ class Buffer(object):
         while write_pos < block_size:
             block = self._blocks[i]
             to_read = min(block.shape[0] - read_pos, block_size - write_pos)
-            print(block_size, numpy.sum([b.shape[0] for b in self._blocks]) - self._read_pos, self._size, read_pos, write_pos)
             block_out[write_pos:write_pos+to_read,:] = block[read_pos:read_pos+to_read,:]
             write_pos += to_read
             read_pos = 0

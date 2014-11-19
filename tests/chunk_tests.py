@@ -21,6 +21,13 @@ class ramp_Test(unittest.TestCase):
             [2], [1.33333], [0.66666], [0]
         ], 4))
 
+    def rounding_duration_test(self):
+        """
+        Because the durations for each ramp are rounded, we might need to adjust the number
+        of samples to make it right.
+        """
+        ramp_samples = chunk.ramp(1, (1, 0.004), (1, 0.012), (0, 0.004))
+        self.assertEqual(ramp_samples.shape, (int(0.02 * 44100), 1))
 
 class fix_channel_count_Test(unittest.TestCase):
     

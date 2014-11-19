@@ -23,10 +23,16 @@ def ramp(initial, *values):
 def _iter_ramps(initial, values):
     values = list(values)
     previous_target = initial
+    # This is used to fix the total duration of the ramps, and avoid accumulating
+    # rounding errors.
+    frames_offset = 0 
 
     while len(values):
         target, duration = values.pop(0)
-        frame_count = round(duration * config.frame_rate)
+        frame_count = duration * config.frame_rate
+        frames_offset += frame_count % 1
+        frame_count = int(frame_count) + int(frames_offset)
+        frames_offset = frames_offset % 1
 
         step = (target - previous_target) / float(frame_count - 1)
         yield previous_target, step, frame_count

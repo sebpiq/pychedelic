@@ -56,6 +56,21 @@ class Buffer_Test(unittest.TestCase):
         numpy.testing.assert_array_equal(block, [[9, 9], [10, 10]])
         self.assertRaises(StopIteration, buf.pull, 2)
 
+    def exhausted_and_big_overlap_test(self):
+        def gen():
+            yield numpy.array([[0, 0]])
+            yield numpy.array([[1, 1]])
+            yield numpy.array([[2, 2]])
+        buf = Buffer(gen())
+        numpy.testing.assert_array_equal(
+            buf.pull(2.01, overlap=2.0000001),
+            [[0, 0], [1, 1]]
+        )
+        numpy.testing.assert_array_equal(
+            buf.pull(2.01, overlap=2.0000001),
+            [[0, 0], [1, 1]]
+        )
+
     def pad_test(self):
         def gen():
             yield numpy.tile(numpy.arange(0, 5), (2, 1)).transpose()
@@ -94,6 +109,40 @@ class Buffer_Test(unittest.TestCase):
             [[44, 44], [55, 55]]
         ])
 
+    def overlap_almost_static_test(self):
+        """
+        Test with such a big overlap that same block is returned several times
+        """
+        def gen():
+            for i in range(6):
+                yield numpy.array([[i * 11]])
+        buf = Buffer(gen())
+        numpy.testing.assert_array_equal(buf.pull(3, overlap=2.5), [
+            [0], [11], [22]
+        ])
+        numpy.testing.assert_array_equal(buf.pull(3, overlap=2.5), [
+            [0], [11], [22]
+        ])
+        numpy.testing.assert_array_equal(buf.pull(3, overlap=2.5), [
+            [11], [22], [33]
+        ])
+
+    def overlap_fuck_up_test(self):
+        """
+        Test that overlap value doesn't fuck up with the block size.
+        """
+        def gen():
+            for i in range(20):
+                yield numpy.ones((1024, 1))
+
+        buf = Buffer(gen())
+        while True:
+            try:
+                block = buf.pull(1764, overlap=352.8, pad=True)
+            except StopIteration:
+                break
+            self.assertEqual(block.shape[0], 1764)
+
     def buffer_fill_test(self):
         def gen():
             for i in range(6):
@@ -129,19 +178,3 @@ class Buffer_Test(unittest.TestCase):
         numpy.testing.assert_array_equal(buf.pull_all(), [
             [0], [11], [22], [33], [44], [55]
         ])
-
-    def overlap_fuck_up_test(self):
-        """
-        Test that overlap value doesn't fuck up with the block size.
-        """
-        def gen():
-            for i in range(20):
-                yield numpy.ones((1024, 1))
-
-        buf = Buffer(gen())
-        while True:
-            try:
-                block = buf.pull(1764, overlap=352.8, pad=True)
-            except StopIteration:
-                break
-            self.assertEqual(block.shape[0], 1764)
