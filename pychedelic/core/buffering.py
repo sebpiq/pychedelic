@@ -54,7 +54,7 @@ class Buffer(object):
         # If there's too much data in the buffer, we need
         # to cut the last block and keep the remainder for next iteration
         new_buffer = []
-        extra = self._size - block_size
+        extra = numpy.ceil(self._size - block_size)
         if extra > 0:
             last_chunk = self._buffer.pop(-1)
             self._buffer.append(last_chunk[:-extra])
@@ -62,9 +62,9 @@ class Buffer(object):
         block = numpy.concatenate(self._buffer, axis=0)
 
         # Preparing next iteration
-        self._size = extra
+        self._size -= block_size
         if overlap:
-            new_buffer.insert(0, block[-overlap:])
+            new_buffer.insert(0, block[-numpy.ceil(overlap):])
             self._size += overlap
         self._buffer = new_buffer
 

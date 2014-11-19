@@ -4,6 +4,14 @@ from pychedelic import config
 
 
 def ramp(initial, *values):
+    """
+    Generates a ramp array.
+
+    The following example generates a ramp that starts from 0, go to 1 in 10 seconds,
+    then go back to 0 in 5 seonds: 
+
+        >>> chunk.ramp(0, (1, 10), (0, 5))
+    """
     ramp_blocks = []
 
     for start, step, frame_count in _iter_ramps(initial, values):

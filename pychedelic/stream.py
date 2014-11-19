@@ -17,10 +17,18 @@ from pychedelic import config
 
 
 def ramp(initial, *values):
+    """
+    Returns a ramp generator.
+
+    The following example generates a ramp that starts from 0, go to 1 in 10 seconds,
+    then go back to 0 in 5 seonds: 
+
+        >>> stream.ramp(0, (1, 10), (0, 5))
+    """
     for start, step, frame_count in chunk._iter_ramps(initial, values):
         counter = 0
         acc = start - step
-        
+
         while counter < frame_count:
             next_size = min(frame_count - counter, config.block_size)
             block = numpy.ones((next_size, 1)) * step
