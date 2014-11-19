@@ -3,6 +3,23 @@ import unittest
 import numpy
 
 from pychedelic import chunk
+from pychedelic import config
+
+
+class ramp_Test(unittest.TestCase):
+
+    def tearDown(self):
+        config.frame_rate = 44100
+        config.block_size = 1024
+
+    def simple_ramp_test(self):
+        config.frame_rate = 4
+        config.block_size = 2
+        ramp_samples = chunk.ramp(1, (2, 1), (0, 2)) 
+        numpy.testing.assert_array_equal(ramp_samples, [
+            [1], [1.25], [1.5], [1.75],
+            [2], [1.75], [1.5], [1.25], [1], [0.75], [0.5], [0.25], [0]
+        ])
 
 
 class fix_channel_count_Test(unittest.TestCase):

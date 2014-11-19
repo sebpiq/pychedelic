@@ -17,25 +17,19 @@ from pychedelic import config
 
 
 def ramp(initial, *values):
-    values = list(values)
-    previous_target = initial
-
-    while len(values):
-        target, time = values.pop(0)
-        current_time = round(time * config.frame_rate)
-        step = (target - previous_target) / float(current_time)
-
+    for start, step, frame_count in chunk._iter_ramps(initial, values):
         counter = 0
-        acc = previous_target - step
-        while counter < current_time:
-            next_size = min(current_time - counter, config.block_size)
+        acc = start - step
+        
+        while counter < frame_count:
+            next_size = min(frame_count - counter, config.block_size)
             block = numpy.ones((next_size, 1)) * step
             block = acc + numpy.cumsum(block, axis=0)
             counter += next_size
             acc = block[-1,0]
             yield block
-        previous_target = target
-    yield numpy.array([[target]], dtype='float32')
+
+    yield numpy.array([[values[-1][0]]], dtype='float32')
 
 
 class Resampler(object):
@@ -67,9 +61,6 @@ class Resampler(object):
         self.frame_in = x_in[-1] + 1 - overlap
 
         block_in = self.source.pull(next_size, overlap=overlap, pad=True)
-        current_time = block_in.shape[0]
-        channel_count = block_in.shape[1]
-
         block_out = []
         for block_ch in block_in.T:
             block_out.append(numpy.interp(x_out, x_in, block_ch))
