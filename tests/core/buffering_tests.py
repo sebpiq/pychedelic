@@ -135,7 +135,7 @@ class Buffer_Test(unittest.TestCase):
         Test that overlap value doesn't fuck up with the block size.
         """
         def gen():
-            for i in range(6):
+            for i in range(20):
                 yield numpy.ones((1024, 1))
 
         buf = Buffer(gen())

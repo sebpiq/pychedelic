@@ -20,14 +20,23 @@ class ramp_Test(unittest.TestCase):
     def simple_ramp_test(self):
         config.frame_rate = 4
         config.block_size = 2
-        ramp_gen = stream.ramp(1, (2, 1), (0, 2)) 
-        numpy.testing.assert_array_equal(next(ramp_gen), [[1], [1.25]])
-        numpy.testing.assert_array_equal(next(ramp_gen), [[1.5], [1.75]])
-        numpy.testing.assert_array_equal(next(ramp_gen), [[2], [1.75]])
-        numpy.testing.assert_array_equal(next(ramp_gen), [[1.5], [1.25]])
-        numpy.testing.assert_array_equal(next(ramp_gen), [[1], [0.75]])
-        numpy.testing.assert_array_equal(next(ramp_gen), [[0.5], [0.25]])
-        numpy.testing.assert_array_equal(next(ramp_gen), [[0]])
+        ramp_gen = stream.ramp(1, (2, 1), (0, 1)) 
+        numpy.testing.assert_array_equal(
+            numpy.round(next(ramp_gen), 4), 
+            numpy.round([[1], [1.33333]], 4)
+        )
+        numpy.testing.assert_array_equal(
+            numpy.round(next(ramp_gen), 4),
+            numpy.round([[1.66666], [2]], 4)
+        )
+        numpy.testing.assert_array_equal(
+            numpy.round(next(ramp_gen), 4),
+            numpy.round([[2], [1.33333]], 4)
+        )
+        numpy.testing.assert_array_equal(
+            numpy.round(next(ramp_gen), 4),
+            numpy.round([[0.66666], [0]], 4)
+        )
         self.assertRaises(StopIteration, next, ramp_gen)
 
 

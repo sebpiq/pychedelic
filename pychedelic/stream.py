@@ -36,9 +36,7 @@ def ramp(initial, *values):
             counter += next_size
             acc = block[-1,0]
             yield block
-
-    yield numpy.array([[values[-1][0]]], dtype='float32')
-
+            
 
 class Resampler(object):
 

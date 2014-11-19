@@ -5,8 +5,9 @@ class Buffer(object):
 
     def __init__(self, source):
         self.source = source
-        self._buffer = [] # a list of blocks of samples
-        self._size = 0
+        self._blocks = []   # a list of blocks of samples
+        self._size = 0      # number of available frames in `_blocks`
+        self._read_pos = 0  # position offset in `_blocks`
 
     def fill(self, to_size):
         while self._size < to_size:
@@ -18,12 +19,11 @@ class Buffer(object):
                 break
 
             else:
-                self._buffer.append(block)
+                self._blocks.append(block)
                 self._size += block.shape[0]
 
-        if len(self._buffer):
-            block = numpy.concatenate(self._buffer, axis=0)
-            return block
+        if len(self._blocks):
+            return self._make_block_out(self._size)
         else: raise StopIteration
 
     def pull(self, block_size, overlap=0, pad=False):
@@ -37,38 +37,35 @@ class Buffer(object):
 
             # Source exhausted
             except StopIteration:
-                if len(self._buffer):
-                    block = numpy.concatenate(self._buffer, axis=0)
-                    self._buffer = []
+                if self._blocks:
+                    block_out = self._make_block_out(self._size)
+                    self._blocks = []
                     self._size = 0
                     if pad is True:
-                        zeros = numpy.zeros((block_size - block.shape[0], block.shape[1]))
-                        return numpy.vstack([block, zeros])
-                    else: return block
+                        zeros = numpy.zeros((block_size - block_out.shape[0], block_out.shape[1]))
+                        return numpy.vstack([block_out, zeros])
+                    else: return block_out
                 else: raise StopIteration
 
             else:
-                self._buffer.append(block)
+                self._blocks.append(block)
                 self._size += block.shape[0]
         
-        # If there's too much data in the buffer, we need
-        # to cut the last block and keep the remainder for next iteration
-        new_buffer = []
-        extra = numpy.ceil(self._size - block_size)
-        if extra > 0:
-            last_chunk = self._buffer.pop(-1)
-            self._buffer.append(last_chunk[:-extra])
-            new_buffer = [last_chunk[-extra:]]
-        block = numpy.concatenate(self._buffer, axis=0)
+        block_out = self._make_block_out(block_size)
 
-        # Preparing next iteration
-        self._size -= block_size
-        if overlap:
-            new_buffer.insert(0, block[-numpy.ceil(overlap):])
-            self._size += overlap
-        self._buffer = new_buffer
+        # Update positions
+        self._read_pos += block_size - overlap
+        self._size -= block_size - overlap
 
-        return block
+        # Discard used blocks
+        block = self._blocks[0]
+        while block.shape[0] <= self._read_pos:
+            self._blocks.pop(0)
+            self._read_pos -= block.shape[0]
+            if not self._blocks: break
+            else: block = self._blocks[0]
+
+        return block_out
 
     def pull_all(self):
         blocks = []
@@ -78,3 +75,21 @@ class Buffer(object):
             except StopIteration:
                 break
         return numpy.concatenate(blocks, axis=0)
+
+    def _make_block_out(self, block_size):
+        channel_count = self._blocks[0].shape[1]
+        block_out = numpy.zeros((block_size, channel_count))
+        read_pos = numpy.floor(self._read_pos)
+        write_pos = 0
+        i = 0
+
+        while write_pos < block_size:
+            block = self._blocks[i]
+            to_read = min(block.shape[0] - read_pos, block_size - write_pos)
+            print(block_size, numpy.sum([b.shape[0] for b in self._blocks]) - self._read_pos, self._size, read_pos, write_pos)
+            block_out[write_pos:write_pos+to_read,:] = block[read_pos:read_pos+to_read,:]
+            write_pos += to_read
+            read_pos = 0
+            i += 1
+
+        return block_out

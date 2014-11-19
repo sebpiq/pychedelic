@@ -15,11 +15,11 @@ class ramp_Test(unittest.TestCase):
     def simple_ramp_test(self):
         config.frame_rate = 4
         config.block_size = 2
-        ramp_samples = chunk.ramp(1, (2, 1), (0, 2)) 
-        numpy.testing.assert_array_equal(ramp_samples, [
-            [1], [1.25], [1.5], [1.75],
-            [2], [1.75], [1.5], [1.25], [1], [0.75], [0.5], [0.25], [0]
-        ])
+        ramp_samples = chunk.ramp(1, (2, 1), (0, 1))
+        numpy.testing.assert_array_equal(numpy.round(ramp_samples, 4), numpy.round([
+            [1], [1.33333], [1.66666], [2],
+            [2], [1.33333], [0.66666], [0]
+        ], 4))
 
 
 class fix_channel_count_Test(unittest.TestCase):

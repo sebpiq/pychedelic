@@ -13,13 +13,10 @@ def ramp(initial, *values):
         >>> chunk.ramp(0, (1, 10), (0, 5))
     """
     ramp_blocks = []
-
     for start, step, frame_count in _iter_ramps(initial, values):
         block = numpy.ones((frame_count, 1)) * step
         block = start - step + numpy.cumsum(block, axis=0)
         ramp_blocks.append(block)
-
-    ramp_blocks.append(numpy.array([[values[-1][0]]], dtype='float32'))
     return numpy.concatenate(ramp_blocks)
 
 
@@ -30,7 +27,8 @@ def _iter_ramps(initial, values):
     while len(values):
         target, duration = values.pop(0)
         frame_count = round(duration * config.frame_rate)
-        step = (target - previous_target) / float(frame_count)
+
+        step = (target - previous_target) / float(frame_count - 1)
         yield previous_target, step, frame_count
         previous_target = target
 
