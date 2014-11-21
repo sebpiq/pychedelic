@@ -13,9 +13,13 @@ def open_write_mode(f, frame_rate, channel_count):
 
 
 def open_read_mode(f):
-    wfile = wave.open(f, 'rb')
+    try:
+        wfile = wave.open(f, mode='rb')
+    except wave.Error as err:
+        raise FormatError(err)
     sample_width = wfile.getsampwidth()       # Sample width in byte
-    if sample_width != 2: raise ValueError('Wave format not supported')
+    if sample_width != 2:
+        raise FormatError('Sample width %s not supported yet' % sample_width)
     return wfile, _get_file_infos(wfile)
 
 
@@ -51,5 +55,13 @@ def _get_file_infos(wfile):
         'frame_rate': frame_rate,
         'channel_count': wfile.getnchannels(),
         'frame_count': wfile.getnframes(),
-        'duration': wfile.getnframes() / float(frame_rate)
+        'duration': wfile.getnframes() / float(frame_rate),
+        'bit_depth': wfile.getsampwidth() * 8
     }
+
+
+class FormatError(Exception):
+    """
+    Raised when attempting to read a wave file failed.
+    """
+    pass
