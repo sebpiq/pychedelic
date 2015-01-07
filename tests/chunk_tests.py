@@ -33,6 +33,48 @@ class ramp_Test(unittest.TestCase):
         self.assertEqual(ramp_samples.shape, (int(0.02 * 44100), 1))
 
 
+class Resampler_test(unittest.TestCase):
+
+    def upsample_test(self):
+        # IN:  0     1     2
+        # OUT: 0 1 2 3 4 5 6
+        block = numpy.arange(0, 6, 2).reshape(3, 1)
+        numpy.testing.assert_array_equal(
+            chunk.resample(block, 1 / 3.0).round(8),
+            numpy.round([
+                [0 * 1/3.0], [2 * 1/3.0], [4 * 1/3.0], [6 * 1/3.0],
+                [8 * 1/3.0], [10 * 1/3.0], [12 * 1/3.0]
+            ], 8)
+        )
+
+    def downsample_test(self):
+        # IN:  0  1  2  3  4  5
+        # OUT: 0      1      2
+        block = numpy.arange(0, 3, 0.5).reshape(6, 1)
+        numpy.testing.assert_array_equal(
+            chunk.resample(block, 7/3.0).round(8),
+            numpy.round([[0], [0.5 * 7 / 3.0], [1 * 7 / 3.0]], 8)
+        )
+
+        # IN:  0 1 2 3 4 5 6 7 8
+        # OUT: 0       1       2
+        block = numpy.vstack([
+            numpy.arange(0, 4.5, 0.5),
+            numpy.arange(0, 45, 5)
+        ]).transpose()
+        numpy.testing.assert_array_equal(
+            chunk.resample(block, 4).round(8),
+            numpy.round([[0, 0], [4 * 0.5, 4 * 5], [8 * 0.5, 8 * 5]], 8)
+        )
+
+    def ratio1_test(self):
+        block = numpy.arange(0, 3, 0.5).reshape(6, 1)
+        numpy.testing.assert_array_equal(
+            chunk.resample(block, 1).round(8),
+            numpy.round(block, 8)
+        )
+
+
 class fix_channel_count_Test(unittest.TestCase):
     
     def identity_test(self):

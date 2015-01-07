@@ -1,4 +1,5 @@
 import numpy
+import math
 
 from .config import config
 from .core import wav
@@ -38,6 +39,26 @@ def _iter_ramps(initial, values):
         step = (target - previous_target) / float(frame_count - 1)
         yield previous_target, step, frame_count
         previous_target = target
+
+
+def resample(block, ratio):
+    """
+    Resamples `block`, returning a new block that has `1/ratio` times the original
+    amount of frames.
+    """
+    if ratio == 1: return block
+
+    frame_count_in = block.shape[0]
+    frame_count_out = math.floor((frame_count_in - 1) / ratio) + 1
+    x_in = numpy.arange(0, frame_count_in)
+    x_out = numpy.arange(0, frame_count_out) * ratio
+    
+    block_out = []
+    for block_ch in block.T:
+        block_out.append(numpy.interp(x_out, x_in, block_ch))
+    block_out = numpy.vstack(block_out).transpose()
+
+    return block_out
 
 
 def fix_channel_count(block, channel_count):
