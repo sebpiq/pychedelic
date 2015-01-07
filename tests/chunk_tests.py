@@ -1,9 +1,12 @@
 import unittest
 
 import numpy
+import scipy.io.wavfile as sp_wavfile
 
 from pychedelic import chunk
 from pychedelic import config
+
+from .__init__ import STEPS_STEREO_16B
 
 
 class ramp_Test(unittest.TestCase):
@@ -74,3 +77,16 @@ class fix_frame_count_Test(unittest.TestCase):
         samples = numpy.array([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]).transpose()
         cropped_samples = numpy.array([[2, 3, 4], [7, 8, 9]]).transpose()
         numpy.testing.assert_array_equal(chunk.fix_frame_count(samples, -3), cropped_samples)
+
+
+class read_wav_Test(unittest.TestCase):
+
+    def simple_file_test(self):
+        samples, infos = chunk.read_wav(STEPS_STEREO_16B)
+
+        self.assertEqual(samples.shape, (92610, 2))
+        self.assertEqual(infos['frame_rate'], 44100)
+        self.assertEqual(infos['channel_count'], 2)
+        # Sanity check
+        frame_rate, samples_test = sp_wavfile.read(open(STEPS_STEREO_16B, 'r'))
+        numpy.testing.assert_array_equal(samples[:10,:].round(4), (samples_test[:10,:] / float(2**15)).round(4))

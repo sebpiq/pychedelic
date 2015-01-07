@@ -1,6 +1,7 @@
 import numpy
 
-from pychedelic import config
+from . import config
+from .core import wav
 
 
 def ramp(initial, *values):
@@ -83,3 +84,11 @@ def reshape(block, channel_count=None, frame_count=None):
     if frame_count != None:
         block = fix_frame_count(block, frame_count)
     return block
+
+
+def read_wav(file_path):
+    """
+    Reads a whole wav file. Returns a tuple `(<samples>, <infos>)`.
+    """
+    wfile, infos = wav.open_read_mode(file_path)
+    return wav.read_all(wfile), infos
