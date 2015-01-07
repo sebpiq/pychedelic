@@ -1,4 +1,5 @@
-from .. import config
+from ..config import config
+
 
 class Clock(object):
 

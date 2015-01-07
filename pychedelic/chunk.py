@@ -1,6 +1,6 @@
 import numpy
 
-from . import config
+from .config import config
 from .core import wav
 
 

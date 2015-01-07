@@ -13,7 +13,7 @@ from .core import pcm
 from .core import buffering
 from .core import scheduling
 from . import chunk
-from pychedelic import config
+from .config import config
 
 
 def ramp(initial, *values):
