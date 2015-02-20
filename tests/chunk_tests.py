@@ -1,4 +1,5 @@
 import unittest
+from tempfile import NamedTemporaryFile
 
 import numpy
 import scipy.io.wavfile as sp_wavfile
@@ -132,3 +133,16 @@ class read_wav_Test(unittest.TestCase):
         # Sanity check
         frame_rate, samples_test = sp_wavfile.read(open(STEPS_STEREO_16B, 'r'))
         numpy.testing.assert_array_equal(samples[:10,:].round(4), (samples_test[:10,:] / float(2**15)).round(4))
+
+
+class write_wav_Test(unittest.TestCase):
+
+    def simple_file_test(self):
+        temp_file = NamedTemporaryFile()
+        blocks = [numpy.ones((44100, 1)) * i * 0.1 for i in range(0, 5)]
+        block = numpy.concatenate(blocks)
+        chunk.write_wav(block, temp_file)
+
+        frame_rate, actual = sp_wavfile.read(temp_file.name)
+        actual = numpy.array([actual / float(2**15)]).transpose()
+        numpy.testing.assert_array_equal(block.round(4), actual.round(4))

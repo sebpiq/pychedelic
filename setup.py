@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
   name='pychedelic',
-  version='0.1.0',
+  version='0.1.2',
   description='A clean, beautiful and shiny python library for sound and music.',
   author='Sébastien Piquemal',
   author_email='sebpiq@gmail.com',

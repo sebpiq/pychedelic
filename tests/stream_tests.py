@@ -398,6 +398,27 @@ class Mixer_test(unittest.TestCase):
         mixer.unplug(src1)
         self.assertRaises(StopIteration, next, mixer)
 
+
+class iter_Test(unittest.TestCase):
+
+    def tearDown(self):
+        config.frame_rate = 44100
+        config.block_size = 1024
+
+    def simple_test(self):
+        config.block_size = 2
+
+        samples = numpy.vstack([numpy.arange(0, 10), numpy.arange(0, 10) * 2]).transpose()
+        iter_gen = stream.iter(samples)
+
+        numpy.testing.assert_array_equal(next(iter_gen), [[0, 0], [1, 2]])
+        numpy.testing.assert_array_equal(next(iter_gen), [[2, 4], [3, 6]])
+        numpy.testing.assert_array_equal(next(iter_gen), [[4, 8], [5, 10]])
+        numpy.testing.assert_array_equal(next(iter_gen), [[6, 12], [7, 14]])
+        numpy.testing.assert_array_equal(next(iter_gen), [[8, 16], [9, 18]])
+        self.assertRaises(StopIteration, next, iter_gen)
+
+
 class read_wav_Test(unittest.TestCase):
 
     def tearDown(self):

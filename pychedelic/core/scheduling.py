@@ -8,6 +8,9 @@ class Clock(object):
         self._events = []
 
     def run_after(self, dur, func, args=None, kwargs=None):
+        """
+        Run `func(*args, **kwargs)` after `dur` seconds.
+        """
         args = args or []
         kwargs = kwargs or {}
         if dur <= 0:

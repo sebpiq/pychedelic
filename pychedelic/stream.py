@@ -118,6 +118,17 @@ class Mixer(object):
 Mixer.next = Mixer.__next__ # Compatibility Python 2
 
 
+def iter(samples, pad=True):
+    """
+    Creates a simple generator which will iter blocks from `samples`.
+    """
+    def _source():
+        yield samples
+    buf = buffering.Buffer(_source())
+    while True:
+        yield buf.pull(config.block_size, pad=pad)
+
+
 def read_wav(f, start=0, end=None):
     wfile, infos = wav.open_read_mode(f)
     current_time = wav.seek(wfile, start, end)
@@ -139,6 +150,7 @@ def to_wav_file(source, f):
         while True:
             wav.write_block(wfile, block)
             block = next(source)
+    wfile.close() # To force writing
 
 
 def to_raw(source):

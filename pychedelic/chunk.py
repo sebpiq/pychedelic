@@ -43,8 +43,7 @@ def _iter_ramps(initial, values):
 
 def resample(block, ratio):
     """
-    Resamples `block`, returning a new block that has `1/ratio` times the original
-    amount of frames.
+    Resamples `block`, returning a new block that has a play rate of `ratio`.
     """
     if ratio == 1: return block
 
@@ -107,9 +106,19 @@ def reshape(block, channel_count=None, frame_count=None):
     return block
 
 
-def read_wav(file_path):
+def read_wav(filelike):
     """
     Reads a whole wav file. Returns a tuple `(<samples>, <infos>)`.
     """
-    wfile, infos = wav.open_read_mode(file_path)
+    wfile, infos = wav.open_read_mode(filelike)
     return wav.read_all(wfile), infos
+
+
+def write_wav(block, filelike):
+    """
+    Writes `block` to a wav file, replacing the whole content. 
+    """
+    channel_count = block.shape[1]
+    wfile, infos = wav.open_write_mode(filelike, config.frame_rate, channel_count)
+    wav.write_block(wfile, block)
+    wfile.close() # To force writing
