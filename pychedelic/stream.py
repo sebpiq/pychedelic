@@ -129,28 +129,47 @@ def iter(samples, pad=True):
         yield buf.pull(config.block_size, pad=pad)
 
 
-def read_wav(f, start=0, end=None):
-    wfile, infos = wav.open_read_mode(f)
-    current_time = wav.seek(wfile, start, end)
+class WavReader(object):
 
-    read = 0
-    while read < current_time:
-        next_size = min(config.block_size, current_time - read)
-        block = wav.read_block(wfile, next_size)
-        read += next_size
-        yield block
+    def __init__(self, f, start=0, end=None):
+        self.wfile, self.infos = wav.open_read_mode(f)
+        self.current_time = wav.seek(self.wfile, start, end)
+        self.read = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.read < self.current_time:
+            next_size = min(config.block_size, self.current_time - self.read)
+            block = wav.read_block(self.wfile, next_size)
+            self.read += next_size
+            return block
+        else: raise StopIteration
+WavReader.next = WavReader.__next__ # Compatibility Python 2
 
 
-def to_wav_file(source, f):
-    with _until_StopIteration():
-        block = next(source)
-        channel_count = block.shape[1]
-        wfile, infos = wav.open_write_mode(f, config.frame_rate, channel_count)
+class WavWriter(object):
 
-        while True:
-            wav.write_block(wfile, block)
-            block = next(source)
-    wfile.close() # To force writing
+    def __init__(self, source, f):
+        self.source = source
+        self._block = next(source)
+        channel_count = self._block.shape[1]
+        self.wfile, self.infos = wav.open_write_mode(f, config.frame_rate, channel_count)
+        # Pull all audio
+        for i in self: pass
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        wav.write_block(self.wfile, self._block)
+        try:
+            self._block = next(self.source)
+        except StopIteration:
+            self.wfile.close() # To force writing
+            raise
+WavWriter.next = WavWriter.__next__ # Compatibility Python 2
 
 
 def to_raw(source):

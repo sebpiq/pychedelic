@@ -419,7 +419,7 @@ class iter_Test(unittest.TestCase):
         self.assertRaises(StopIteration, next, iter_gen)
 
 
-class read_wav_Test(unittest.TestCase):
+class WavReader_Test(unittest.TestCase):
 
     def tearDown(self):
         config.frame_rate = 44100
@@ -427,8 +427,8 @@ class read_wav_Test(unittest.TestCase):
 
     def blocks_size_test(self):
         config.block_size = 50
-        blocks = stream.read_wav(A440_STEREO_16B)
-        self.assertEqual(type(blocks), types.GeneratorType)
+        blocks = stream.WavReader(A440_STEREO_16B)
+        self.assertEqual(blocks.infos['frame_rate'], 44100)
         blocks = list(blocks)
         self.assertEqual([len(b) for b in blocks], [50, 50, 50, 50, 50, 50, 50, 50, 41])
         self.assertEqual(blocks[0].shape, (50, 2))
@@ -443,8 +443,8 @@ class read_wav_Test(unittest.TestCase):
         Read only a segment of the file, block_size bigger than segment to read.
         """
         config.block_size = 1000
-        blocks = stream.read_wav(A440_MONO_16B, start=0.002, end=0.004)
-        self.assertEqual(type(blocks), types.GeneratorType)
+        blocks = stream.WavReader(A440_MONO_16B, start=0.002, end=0.004)
+        self.assertEqual(blocks.infos['frame_rate'], 44100)
         blocks = list(blocks)
         self.assertEqual(len(blocks), 1)
         self.assertEqual(blocks[0].shape, (88, 1))
@@ -459,8 +459,8 @@ class read_wav_Test(unittest.TestCase):
         Ommit end, not an exact count of block_size.
         """
         config.block_size = 20
-        blocks = stream.read_wav(A440_MONO_16B, start=0.002)
-        self.assertEqual(type(blocks), types.GeneratorType)
+        blocks = stream.WavReader(A440_MONO_16B, start=0.002)
+        self.assertEqual(blocks.infos['frame_rate'], 44100)
         blocks = list(blocks)
         self.assertEqual([len(b) for b in blocks], [20] * 17 + [13])
         self.assertEqual(blocks[0].shape, (20, 1))
@@ -471,7 +471,7 @@ class read_wav_Test(unittest.TestCase):
         numpy.testing.assert_array_equal(expected.round(4), actual.round(4))
 
 
-class to_wav_file_Test(unittest.TestCase):
+class WavWriter_Test(unittest.TestCase):
 
     def simple_write_test(self):
         temp_file = NamedTemporaryFile()
@@ -483,7 +483,8 @@ class to_wav_file_Test(unittest.TestCase):
                 blocks.append(block)
                 yield block
 
-        sink = stream.to_wav_file(source(), temp_file)
+        sink = stream.WavWriter(source(), temp_file)
+        self.assertEqual(sink.infos['frame_rate'], 44100)
 
         expected = numpy.concatenate(blocks)
         frame_rate, actual = sp_wavfile.read(temp_file.name)
@@ -507,7 +508,8 @@ class to_wav_file_Test(unittest.TestCase):
             while True:
                 yield next(source) * 2
 
-        sink = stream.to_wav_file(double(source()), temp_file)
+        sink = stream.WavWriter(double(source()), temp_file)
+        self.assertEqual(sink.infos['frame_rate'], 44100)
 
         expected = numpy.concatenate(blocks) * 2
         frame_rate, actual = sp_wavfile.read(temp_file.name)
