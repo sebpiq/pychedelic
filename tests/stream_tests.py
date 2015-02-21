@@ -398,6 +398,34 @@ class Mixer_test(unittest.TestCase):
         mixer.unplug(src1)
         self.assertRaises(StopIteration, next, mixer)
 
+    def stop_when_empty_test(self):
+        config.frame_rate = 4
+        config.block_size = 2
+
+        def source_stereo():
+            for i in range(0, 3):
+                yield numpy.ones((1, 2)) * 1 * (i + 1)
+
+        mixer = stream.Mixer(stop_when_empty=False)
+        
+        numpy.testing.assert_array_equal(next(mixer), [
+            [0],
+            [0]
+        ])
+
+        mixer.plug(source_stereo())
+        numpy.testing.assert_array_equal(next(mixer), [
+            [1, 1],
+            [2, 2]
+        ])
+        numpy.testing.assert_array_equal(next(mixer), [
+            [3, 3],
+            [0, 0]
+        ])
+        numpy.testing.assert_array_equal(next(mixer), [
+            [0],
+            [0]
+        ])
 
 class iter_Test(unittest.TestCase):
 

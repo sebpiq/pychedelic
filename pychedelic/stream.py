@@ -76,11 +76,13 @@ class Resampler(object):
 Resampler.next = Resampler.__next__ # Compatibility Python 2
 
 
+#TODO : static number of channels?
 class Mixer(object):
 
-    def __init__(self):
+    def __init__(self, stop_when_empty=True):
         self.sources = []
         self.clock = scheduling.Clock()
+        self.stop_when_empty = stop_when_empty
 
     def plug(self, source):
         self.sources.append(buffering.Buffer(source))
@@ -108,11 +110,15 @@ class Mixer(object):
                     if len(block_channels) < (ch + 1):
                         block_channels.append(numpy.zeros(next_size, dtype='float32'))
                     block_channels[ch] = numpy.sum([block_channels[ch], block[:,ch]], axis=0)
-                
+        
         # Forget empty sources
         for buf in empty_sources:
             self.sources.remove(buf)
-        if len(self.sources) is 0: raise StopIteration
+        if len(self.sources) is 0:
+            if self.stop_when_empty:
+                raise StopIteration
+            elif len(block_channels) is 0:
+                return numpy.zeros((next_size, 1), dtype='float32') # TODO: how many channels?
 
         return numpy.column_stack(block_channels)
 Mixer.next = Mixer.__next__ # Compatibility Python 2
