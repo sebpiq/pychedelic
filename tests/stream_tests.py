@@ -6,7 +6,7 @@ import unittest
 import numpy
 import scipy.io.wavfile as sp_wavfile
 
-from .__init__ import A440_MONO_16B, A440_STEREO_16B
+from .__init__ import A440_MONO_16B, A440_STEREO_16B, STEPS_MONO_16B
 from pychedelic import stream
 from pychedelic import config
 
@@ -429,6 +429,8 @@ class WavReader_Test(unittest.TestCase):
         config.block_size = 50
         blocks = stream.WavReader(A440_STEREO_16B)
         self.assertEqual(blocks.infos['frame_rate'], 44100)
+        self.assertEqual(blocks.infos['channel_count'], 2)
+
         blocks = list(blocks)
         self.assertEqual([len(b) for b in blocks], [50, 50, 50, 50, 50, 50, 50, 50, 41])
         self.assertEqual(blocks[0].shape, (50, 2))
@@ -445,6 +447,8 @@ class WavReader_Test(unittest.TestCase):
         config.block_size = 1000
         blocks = stream.WavReader(A440_MONO_16B, start=0.002, end=0.004)
         self.assertEqual(blocks.infos['frame_rate'], 44100)
+        self.assertEqual(blocks.infos['channel_count'], 1)
+
         blocks = list(blocks)
         self.assertEqual(len(blocks), 1)
         self.assertEqual(blocks[0].shape, (88, 1))
@@ -461,6 +465,8 @@ class WavReader_Test(unittest.TestCase):
         config.block_size = 20
         blocks = stream.WavReader(A440_MONO_16B, start=0.002)
         self.assertEqual(blocks.infos['frame_rate'], 44100)
+        self.assertEqual(blocks.infos['channel_count'], 1)
+
         blocks = list(blocks)
         self.assertEqual([len(b) for b in blocks], [20] * 17 + [13])
         self.assertEqual(blocks[0].shape, (20, 1))
@@ -469,6 +475,32 @@ class WavReader_Test(unittest.TestCase):
         frame_rate, expected = sp_wavfile.read(A440_MONO_16B)
         expected = numpy.array([expected[0.002*44100:] / float(2**15)]).transpose()
         numpy.testing.assert_array_equal(expected.round(4), actual.round(4))
+
+    def seek_test(self):
+        config.block_size = 441
+        blocks = stream.WavReader(STEPS_MONO_16B, start=1.1, end=1.4)
+
+        self.assertEqual(blocks.infos['frame_rate'], 44100)
+        self.assertEqual(blocks.infos['channel_count'], 1)
+
+        expected = numpy.ones([441, 1]) * 0.1
+        samples = next(blocks)
+        numpy.testing.assert_array_equal(expected.round(3), samples.round(3))
+
+        blocks.seek(1.3)
+        expected = numpy.ones([441, 1]) * 0.3
+        samples = next(blocks)
+        numpy.testing.assert_array_equal(expected.round(3), samples.round(3))
+
+        blocks.seek(1.3)
+        expected = numpy.ones([441, 1]) * 0.3
+        samples = next(blocks)
+        numpy.testing.assert_array_equal(expected.round(3), samples.round(3))
+
+        blocks.seek(0)
+        expected = numpy.ones([441, 1]) * -1
+        samples = next(blocks)
+        numpy.testing.assert_array_equal(expected.round(3), samples.round(3))
 
 
 class WavWriter_Test(unittest.TestCase):

@@ -24,6 +24,9 @@ def open_read_mode(f):
 
 
 def seek(wfile, position, end=None):
+    """
+    Seeks `position` in `wfile`, and returns the number of frames to read until `end`.
+    """
     end_frame = wfile.getnframes()
     if end != None: end_frame = min(end * wfile.getframerate(), end_frame)
     position_frame = position * wfile.getframerate()

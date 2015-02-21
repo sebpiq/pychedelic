@@ -121,6 +121,7 @@ Mixer.next = Mixer.__next__ # Compatibility Python 2
 def iter(samples, pad=True):
     """
     Creates a simple generator which will iter blocks from `samples`.
+    Each ouput block is guaranteed to have `config.block_size` frames, if pad is `True`.
     """
     def _source():
         yield samples
@@ -133,19 +134,26 @@ class WavReader(object):
 
     def __init__(self, f, start=0, end=None):
         self.wfile, self.infos = wav.open_read_mode(f)
-        self.current_time = wav.seek(self.wfile, start, end)
-        self.read = 0
+        self.end = end
+        self.seek(start)
+        self.frames_read = 0
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self.read < self.current_time:
-            next_size = min(config.block_size, self.current_time - self.read)
+        if self.frames_read < self.frames_to_read:
+            next_size = min(config.block_size, self.frames_to_read - self.frames_read)
             block = wav.read_block(self.wfile, next_size)
-            self.read += next_size
+            self.frames_read += next_size
             return block
         else: raise StopIteration
+
+    def seek(self, position):
+        """
+        Seek `position` in seconds in the wav file.
+        """
+        self.frames_to_read = wav.seek(self.wfile, position, self.end)
 WavReader.next = WavReader.__next__ # Compatibility Python 2
 
 
