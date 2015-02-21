@@ -38,7 +38,7 @@ def ramp(initial, *values):
             yield block
             
 
-class Resampler(object):
+class resample(object):
 
     def __init__(self, source):
         self.source = buffering.Buffer(source)
@@ -73,11 +73,11 @@ class Resampler(object):
         block_out = numpy.vstack(block_out).transpose()
 
         return block_out
-Resampler.next = Resampler.__next__ # Compatibility Python 2
+resample.next = resample.__next__ # Compatibility Python 2
 
 
 #TODO : static number of channels?
-class Mixer(object):
+class mixer(object):
 
     def __init__(self, stop_when_empty=True):
         self.sources = []
@@ -121,7 +121,7 @@ class Mixer(object):
                 return numpy.zeros((next_size, 1), dtype='float32') # TODO: how many channels?
 
         return numpy.column_stack(block_channels)
-Mixer.next = Mixer.__next__ # Compatibility Python 2
+mixer.next = mixer.__next__ # Compatibility Python 2
 
 
 def iter(samples, pad=True):
@@ -136,7 +136,7 @@ def iter(samples, pad=True):
         yield buf.pull(config.block_size, pad=pad)
 
 
-class WavReader(object):
+class read_wav(object):
 
     def __init__(self, f, start=0, end=None):
         self.wfile, self.infos = wav.open_read_mode(f)
@@ -160,10 +160,10 @@ class WavReader(object):
         Seek `position` in seconds in the wav file.
         """
         self.frames_to_read = wav.seek(self.wfile, position, self.end)
-WavReader.next = WavReader.__next__ # Compatibility Python 2
+read_wav.next = read_wav.__next__ # Compatibility Python 2
 
 
-class WavWriter(object):
+class write_wav(object):
 
     def __init__(self, source, f):
         self.source = source
@@ -183,7 +183,7 @@ class WavWriter(object):
         except StopIteration:
             self.wfile.close() # To force writing
             raise
-WavWriter.next = WavWriter.__next__ # Compatibility Python 2
+write_wav.next = write_wav.__next__ # Compatibility Python 2
 
 
 def to_raw(source):

@@ -40,7 +40,7 @@ class ramp_Test(unittest.TestCase):
         self.assertRaises(StopIteration, next, ramp_gen)
 
 
-class Resampler_test(unittest.TestCase):
+class resampler_test(unittest.TestCase):
 
     def tearDown(self):
         config.frame_rate = 44100
@@ -64,7 +64,7 @@ class Resampler_test(unittest.TestCase):
             for i in range(0, 4):
                 yield numpy.arange(i * 2 * 3, (i + 1) * 2 * 3, 2).reshape(3, 1)
 
-        resampler = stream.Resampler(gen())
+        resampler = stream.resample(gen())
         resampler.set_ratio(1 / 3.0)
 
         # IN:  0     1     2
@@ -111,7 +111,7 @@ class Resampler_test(unittest.TestCase):
                 ]).transpose()
                 yield block_in
 
-        resampler = stream.Resampler(gen())
+        resampler = stream.resample(gen())
         ratio = 2 / 3.0
         resampler.set_ratio(ratio)
 
@@ -148,7 +148,7 @@ class Resampler_test(unittest.TestCase):
             for i in range(0, 10):
                 yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
 
-        resampler = stream.Resampler(gen())
+        resampler = stream.resample(gen())
         ratio = 7/3.0
         resampler.set_ratio(ratio)
 
@@ -186,7 +186,7 @@ class Resampler_test(unittest.TestCase):
             for i in range(0, 10):
                 yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
 
-        resampler = stream.Resampler(gen())
+        resampler = stream.resample(gen())
         ratio = 4
         resampler.set_ratio(ratio)
 
@@ -215,7 +215,7 @@ class Resampler_test(unittest.TestCase):
             for i in range(0, 10):
                 yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
 
-        resampler = stream.Resampler(gen())
+        resampler = stream.resample(gen())
 
         numpy.testing.assert_array_equal(
             next(resampler).round(8),
@@ -253,7 +253,7 @@ class Resampler_test(unittest.TestCase):
         samples = numpy.cos(2 * numpy.pi * f0 * time)
         def gen():
             yield samples.reshape(len(samples), 1)
-        resampler = stream.Resampler(gen())
+        resampler = stream.resample(gen())
         resampler.set_ratio(ratio)
         self.assertEqual(round(zcr_f0(samples), 3), round(f0, 3))
 
@@ -275,7 +275,7 @@ class Resampler_test(unittest.TestCase):
             for i in range(0, 4):
                 yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
 
-        resampler = stream.Resampler(gen())
+        resampler = stream.resample(gen())
         ratio = 4
         resampler.set_ratio(ratio)
 
@@ -290,7 +290,7 @@ class Resampler_test(unittest.TestCase):
         self.assertRaises(StopIteration, next, resampler)
 
 
-class Mixer_test(unittest.TestCase):
+class mixer_test(unittest.TestCase):
 
     def tearDown(self):
         config.frame_rate = 44100
@@ -312,7 +312,7 @@ class Mixer_test(unittest.TestCase):
             for i in range(0, 3):
                 yield numpy.ones((3, 1)) * 0.01 * (i + 1)
 
-        mixer = stream.Mixer()
+        mixer = stream.mixer()
         mixer.plug(source_stereo1())
         mixer.plug(source_mono1())
         numpy.testing.assert_array_equal(next(mixer), [
@@ -350,7 +350,7 @@ class Mixer_test(unittest.TestCase):
             for i in range(0, 3):
                 yield numpy.ones((3, 1)) * 0.01 * (i + 1)
 
-        mixer = stream.Mixer()
+        mixer = stream.mixer()
         mixer.plug(source_mono())
         mixer.clock.run_after(1.5, mixer.plug, args=[source_stereo()])
 
@@ -380,7 +380,7 @@ class Mixer_test(unittest.TestCase):
             for i in range(0, 3):
                 yield numpy.ones((3, 1)) * 0.01 * (i + 1)
 
-        mixer = stream.Mixer()
+        mixer = stream.mixer()
         src1 = source_mono()
         src2 = source_stereo()
         mixer.plug(src2)
@@ -406,7 +406,7 @@ class Mixer_test(unittest.TestCase):
             for i in range(0, 3):
                 yield numpy.ones((1, 2)) * 1 * (i + 1)
 
-        mixer = stream.Mixer(stop_when_empty=False)
+        mixer = stream.mixer(stop_when_empty=False)
         
         numpy.testing.assert_array_equal(next(mixer), [
             [0],
@@ -447,7 +447,7 @@ class iter_Test(unittest.TestCase):
         self.assertRaises(StopIteration, next, iter_gen)
 
 
-class WavReader_Test(unittest.TestCase):
+class read_wav_Test(unittest.TestCase):
 
     def tearDown(self):
         config.frame_rate = 44100
@@ -455,7 +455,7 @@ class WavReader_Test(unittest.TestCase):
 
     def blocks_size_test(self):
         config.block_size = 50
-        blocks = stream.WavReader(A440_STEREO_16B)
+        blocks = stream.read_wav(A440_STEREO_16B)
         self.assertEqual(blocks.infos['frame_rate'], 44100)
         self.assertEqual(blocks.infos['channel_count'], 2)
 
@@ -473,7 +473,7 @@ class WavReader_Test(unittest.TestCase):
         Read only a segment of the file, block_size bigger than segment to read.
         """
         config.block_size = 1000
-        blocks = stream.WavReader(A440_MONO_16B, start=0.002, end=0.004)
+        blocks = stream.read_wav(A440_MONO_16B, start=0.002, end=0.004)
         self.assertEqual(blocks.infos['frame_rate'], 44100)
         self.assertEqual(blocks.infos['channel_count'], 1)
 
@@ -491,7 +491,7 @@ class WavReader_Test(unittest.TestCase):
         Ommit end, not an exact count of block_size.
         """
         config.block_size = 20
-        blocks = stream.WavReader(A440_MONO_16B, start=0.002)
+        blocks = stream.read_wav(A440_MONO_16B, start=0.002)
         self.assertEqual(blocks.infos['frame_rate'], 44100)
         self.assertEqual(blocks.infos['channel_count'], 1)
 
@@ -506,7 +506,7 @@ class WavReader_Test(unittest.TestCase):
 
     def seek_test(self):
         config.block_size = 441
-        blocks = stream.WavReader(STEPS_MONO_16B, start=1.1, end=1.4)
+        blocks = stream.read_wav(STEPS_MONO_16B, start=1.1, end=1.4)
 
         self.assertEqual(blocks.infos['frame_rate'], 44100)
         self.assertEqual(blocks.infos['channel_count'], 1)
@@ -531,7 +531,7 @@ class WavReader_Test(unittest.TestCase):
         numpy.testing.assert_array_equal(expected.round(3), samples.round(3))
 
 
-class WavWriter_Test(unittest.TestCase):
+class write_wav_Test(unittest.TestCase):
 
     def simple_write_test(self):
         temp_file = NamedTemporaryFile()
@@ -543,7 +543,7 @@ class WavWriter_Test(unittest.TestCase):
                 blocks.append(block)
                 yield block
 
-        sink = stream.WavWriter(source(), temp_file)
+        sink = stream.write_wav(source(), temp_file)
         self.assertEqual(sink.infos['frame_rate'], 44100)
 
         expected = numpy.concatenate(blocks)
@@ -568,7 +568,7 @@ class WavWriter_Test(unittest.TestCase):
             while True:
                 yield next(source) * 2
 
-        sink = stream.WavWriter(double(source()), temp_file)
+        sink = stream.write_wav(double(source()), temp_file)
         self.assertEqual(sink.infos['frame_rate'], 44100)
 
         expected = numpy.concatenate(blocks) * 2
