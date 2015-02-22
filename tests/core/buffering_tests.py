@@ -56,20 +56,90 @@ class Buffer_Test(unittest.TestCase):
         numpy.testing.assert_array_equal(block, [[9, 9], [10, 10]])
         self.assertRaises(StopIteration, buf.pull, 2)
 
-    def exhausted_and_big_overlap_test(self):
+    def exhausted_overlap_no_pad_test(self):
         def gen():
             yield numpy.array([[0, 0]])
             yield numpy.array([[1, 1]])
             yield numpy.array([[2, 2]])
         buf = Buffer(gen())
         numpy.testing.assert_array_equal(
-            buf.pull(2.01, overlap=2.0000001),
+            buf.pull(2, overlap=1),
             [[0, 0], [1, 1]]
         )
         numpy.testing.assert_array_equal(
-            buf.pull(2.01, overlap=2.0000001),
+            buf.pull(2, overlap=1),
+            [[1, 1], [2, 2]]
+        )
+        numpy.testing.assert_array_equal(
+            buf.pull(2, overlap=1),
+            [[2, 2]]
+        )
+        self.assertRaises(StopIteration, buf.pull, 2, overlap=1)
+
+    def exhausted_overlap_no_pad_decimal_test(self):
+        def gen():
+            yield numpy.array([[0, 0]])
+            yield numpy.array([[1, 1]])
+            yield numpy.array([[2, 2]])
+        buf = Buffer(gen())
+        # read position = 0
+        numpy.testing.assert_array_equal(
+            buf.pull(2.5, overlap=2),
             [[0, 0], [1, 1]]
         )
+        # read position = 2.5 - 2 = 0.5
+        numpy.testing.assert_array_equal(
+            buf.pull(2.5, overlap=2),
+            [[0, 0], [1, 1]]
+        )
+        # read position = 0.5 + (2.5 - 2) = 1.0
+        # -> discarding block 0
+        # -> read position = 0       
+        numpy.testing.assert_array_equal(
+            buf.pull(2.5, overlap=2),
+            [[1, 1], [2, 2]]
+        )
+        # read position = 2.5 - 2 = 0.5
+        numpy.testing.assert_array_equal(
+            buf.pull(2.5, overlap=2),
+            [[1, 1], [2, 2]]
+        )
+        # read position = 0.5 + (2.5 - 2) = 1.0
+        # -> discarding block 0
+        # -> read position = 0 
+        numpy.testing.assert_array_equal(
+            buf.pull(2.5, overlap=2),
+            [[2, 2]]
+        )
+        # read position = 2.5 - 2 = 0.5
+        numpy.testing.assert_array_equal(
+            buf.pull(2.5, overlap=2),
+            [[2, 2]]
+        )
+        # read position = 0.5 + (2.5 - 2) = 1.0
+        # -> discarding block 0
+        # -> empty
+        self.assertRaises(StopIteration, buf.pull, 2.5, overlap=2)
+
+    def exhausted_overlap_and_pad_test(self):
+        def gen():
+            yield numpy.array([[0, 0]])
+            yield numpy.array([[1, 1]])
+            yield numpy.array([[2, 2]])
+        buf = Buffer(gen())
+        numpy.testing.assert_array_equal(
+            buf.pull(3, overlap=2, pad=True),
+            [[0, 0], [1, 1], [2, 2]]
+        )
+        numpy.testing.assert_array_equal(
+            buf.pull(3, overlap=2, pad=True),
+            [[1, 1], [2, 2], [0, 0]]
+        )
+        numpy.testing.assert_array_equal(
+            buf.pull(6, overlap=2, pad=True),
+            [[2, 2], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]
+        )
+        self.assertRaises(StopIteration, buf.pull, 2)
 
     def pad_test(self):
         def gen():
@@ -148,7 +218,7 @@ class Buffer_Test(unittest.TestCase):
             for i in range(6):
                 yield numpy.array([[i * 11]])
         buf = Buffer(gen())
-        # Calling several times without should return the same,
+        # Calling several times without pull should return the same,
         # as buffer is already filled.
         blocks = [buf.fill(2) for i in range(0, 2)]
         numpy.testing.assert_array_equal(blocks, [
