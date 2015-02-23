@@ -28,7 +28,7 @@ class Buffer(object):
         else: raise StopIteration
 
     def pull(self, block_size, overlap=0, pad=False):
-        if overlap and overlap >= block_size:
+        if overlap and overlap > block_size:
             raise ValueError('overlap cannot be more than block_size')
 
         # First, get as much blocks of data as needed.
