@@ -427,6 +427,7 @@ class mixer_test(unittest.TestCase):
             [0]
         ])
 
+
 class iter_Test(unittest.TestCase):
 
     def tearDown(self):
@@ -444,6 +445,26 @@ class iter_Test(unittest.TestCase):
         numpy.testing.assert_array_equal(next(iter_gen), [[4, 8], [5, 10]])
         numpy.testing.assert_array_equal(next(iter_gen), [[6, 12], [7, 14]])
         numpy.testing.assert_array_equal(next(iter_gen), [[8, 16], [9, 18]])
+        self.assertRaises(StopIteration, next, iter_gen)
+
+    def start_test(self):
+        config.block_size = 2
+
+        samples = numpy.vstack([numpy.arange(0, 10), numpy.arange(0, 10) * 2]).transpose()
+        iter_gen = stream.iter(samples, start=4.0/config.frame_rate)
+
+        numpy.testing.assert_array_equal(next(iter_gen), [[4, 8], [5, 10]])
+        numpy.testing.assert_array_equal(next(iter_gen), [[6, 12], [7, 14]])
+        numpy.testing.assert_array_equal(next(iter_gen), [[8, 16], [9, 18]])
+        self.assertRaises(StopIteration, next, iter_gen)
+
+    def end_test(self):
+        config.block_size = 2
+
+        samples = numpy.vstack([numpy.arange(0, 10), numpy.arange(0, 10) * 2]).transpose()
+        iter_gen = stream.iter(samples, start=4.0/config.frame_rate, end=5.0/config.frame_rate)
+
+        numpy.testing.assert_array_equal(next(iter_gen), [[4, 8], [0, 0]])
         self.assertRaises(StopIteration, next, iter_gen)
 
 

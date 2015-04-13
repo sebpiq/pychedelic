@@ -124,16 +124,34 @@ class mixer(object):
 mixer.next = mixer.__next__ # Compatibility Python 2
 
 
-def iter(samples, pad=True):
+class iter(object):
     """
     Creates a simple generator which will iter blocks from `samples`.
     Each ouput block is guaranteed to have `config.block_size` frames, if pad is `True`.
     """
-    def _source():
-        yield samples
-    buf = buffering.Buffer(_source())
-    while True:
-        yield buf.pull(config.block_size, pad=pad)
+
+    def __init__(self, samples, pad=True, start=0, end=None):
+        self.samples = samples
+        self.pad = pad
+        self.end = end
+        self.seek(start)
+
+    def seek(self, position):
+        def _source():
+            if self.end is None:
+                yield self.samples[math.floor(position * config.frame_rate):,:]
+            else:
+                start_frame = math.floor(position * config.frame_rate)
+                end_frame = math.floor(self.end * config.frame_rate)
+                yield self.samples[start_frame:end_frame,:]
+        self.buffer = buffering.Buffer(_source())
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.buffer.pull(config.block_size, pad=self.pad)
+iter.next = iter.__next__ # Compatibility Python 2
 
 
 class read_wav(object):
