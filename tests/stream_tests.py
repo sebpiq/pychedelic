@@ -468,6 +468,18 @@ class iter_Test(unittest.TestCase):
         self.assertRaises(StopIteration, next, iter_gen)
 
 
+class concatenate_Test(unittest.TestCase):
+
+    def simple_test(self):
+        def source():
+            for i in range(0, 3):
+                yield numpy.ones([3, 1]) * i
+        block = stream.concatenate(source())
+        numpy.testing.assert_array_equal(block, numpy.array([
+            [0], [0], [0], [1], [1], [1], [2], [2], [2]
+        ]))
+
+
 class read_wav_Test(unittest.TestCase):
 
     def tearDown(self):
