@@ -7,7 +7,7 @@ import scipy.io.wavfile as sp_wavfile
 from pychedelic import chunk
 from pychedelic import config
 
-from .__init__ import STEPS_STEREO_16B
+from .__init__ import STEPS_STEREO_16B, A440_MONO_16B
 
 
 class ramp_Test(unittest.TestCase):
@@ -133,6 +133,26 @@ class read_wav_Test(unittest.TestCase):
         # Sanity check
         frame_rate, samples_test = sp_wavfile.read(open(STEPS_STEREO_16B, 'r'))
         numpy.testing.assert_array_equal(samples[:10,:].round(4), (samples_test[:10,:] / float(2**15)).round(4))
+
+    def start_end_test(self):
+        frame_rate, reference_samples = sp_wavfile.read(A440_MONO_16B)
+
+        samples, infos = chunk.read_wav(A440_MONO_16B, start=0.002, end=0.004)
+        self.assertEqual(infos['frame_rate'], 44100)
+        self.assertEqual(infos['channel_count'], 1)
+        self.assertEqual(samples.shape, (88, 1))
+        expected = numpy.array([reference_samples[0.002*44100:0.004*44100] / float(2**15)]).transpose()
+        numpy.testing.assert_array_equal(expected.round(4), samples.round(4))
+
+        samples, infos = chunk.read_wav(A440_MONO_16B, start=0.002)
+        self.assertEqual(samples.shape, (441 - 88, 1))
+        expected = numpy.array([reference_samples[0.002*44100:] / float(2**15)]).transpose()
+        numpy.testing.assert_array_equal(expected.round(4), samples.round(4))
+
+        samples, infos = chunk.read_wav(A440_MONO_16B, end=0.002)
+        self.assertEqual(samples.shape, (88, 1))
+        expected = numpy.array([reference_samples[:0.002*44100] / float(2**15)]).transpose()
+        numpy.testing.assert_array_equal(expected.round(4), samples.round(4))
 
 
 class write_wav_Test(unittest.TestCase):

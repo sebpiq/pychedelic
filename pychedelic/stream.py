@@ -156,8 +156,8 @@ iter.next = iter.__next__ # Compatibility Python 2
 
 class read_wav(object):
 
-    def __init__(self, f, start=0, end=None):
-        self.wfile, self.infos = wav.open_read_mode(f)
+    def __init__(self, filelike, start=0, end=None):
+        self.wfile, self.infos = wav.open_read_mode(filelike)
         self.end = end
         self.seek(start)
         self.frames_read = 0
@@ -183,11 +183,11 @@ read_wav.next = read_wav.__next__ # Compatibility Python 2
 
 class write_wav(object):
 
-    def __init__(self, source, f):
+    def __init__(self, source, filelike):
         self.source = source
         self._block = next(source)
         channel_count = self._block.shape[1]
-        self.wfile, self.infos = wav.open_write_mode(f, config.frame_rate, channel_count)
+        self.wfile, self.infos = wav.open_write_mode(filelike, config.frame_rate, channel_count)
         # Pull all audio
         for i in self: pass
 

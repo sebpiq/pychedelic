@@ -106,13 +106,15 @@ def reshape(block, channel_count=None, frame_count=None):
     return block
 
 
-def read_wav(filelike):
+def read_wav(filelike, start=0, end=None):
     """
     Reads a whole wav file. Returns a tuple `(<samples>, <infos>)`.
     """
     wfile, infos = wav.open_read_mode(filelike)
-    return wav.read_all(wfile), infos
-
+    start_frame = start * infos['frame_rate']
+    frame_count = wav.seek(wfile, start, end)
+    return wav.read_block(wfile, frame_count), infos
+    
 
 def write_wav(block, filelike):
     """
