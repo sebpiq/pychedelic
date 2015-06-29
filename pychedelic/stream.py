@@ -130,7 +130,7 @@ class iter(object):
     Each ouput block is guaranteed to have `config.block_size` frames, if pad is `True`.
     """
 
-    def __init__(self, samples, pad=True, start=0, end=None):
+    def __init__(self, samples, pad=False, start=0, end=None):
         self.samples = samples
         self.pad = pad
         self.end = end
