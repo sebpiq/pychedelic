@@ -112,6 +112,8 @@ def read_wav(filelike, start=0, end=None):
     """
     wfile, infos = wav.open_read_mode(filelike)
     start_frame = start * infos['frame_rate']
+    if start_frame > infos['frame_count']:
+        return numpy.empty([0, infos['channel_count']]), infos
     frame_count = wav.seek(wfile, start, end)
     return wav.read_block(wfile, frame_count), infos
     

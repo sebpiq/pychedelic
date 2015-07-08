@@ -154,6 +154,18 @@ class read_wav_Test(unittest.TestCase):
         expected = numpy.array([reference_samples[:0.002*44100] / float(2**15)]).transpose()
         numpy.testing.assert_array_equal(expected.round(4), samples.round(4))
 
+    def read_after_eof_test(self):
+        samples, infos = chunk.read_wav(A440_MONO_16B, start=0.002, end=1000)
+        self.assertEqual(samples.shape, (441 - 88, 1))
+
+    def start_is_after_eof_test(self):
+        samples, infos = chunk.read_wav(A440_MONO_16B, start=1000)
+        self.assertEqual(samples.shape, (0, 1))
+
+    def empty_read_test(self):
+        samples, infos = chunk.read_wav(A440_MONO_16B, start=0, end=0)
+        self.assertEqual(samples.shape, (0, 1))
+
 
 class write_wav_Test(unittest.TestCase):
 
