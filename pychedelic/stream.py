@@ -76,12 +76,15 @@ class resample(object):
 resample.next = resample.__next__ # Compatibility Python 2
 
 
-#TODO : static number of channels?
 class mixer(object):
+    """
+    Mixes several streams of audio into one.
+    """
 
-    def __init__(self, stop_when_empty=True):
+    def __init__(self, channel_count, stop_when_empty=True):
         self.sources = []
         self.clock = scheduling.Clock()
+        self.channel_count = channel_count
         self.stop_when_empty = stop_when_empty
 
     def plug(self, source):
@@ -94,9 +97,9 @@ class mixer(object):
         return self
 
     def __next__(self):
-        block_channels = []
         empty_sources = []
         next_size = self.clock.advance(config.block_size)
+        block_channels = [numpy.zeros(next_size, dtype='float32') for ch in range(self.channel_count)]
 
         # Iterating through all the sources and do the mixing
         for buf in self.sources:
@@ -105,20 +108,21 @@ class mixer(object):
             except StopIteration:
                 empty_sources.append(buf)
             else:
-                # If the source is empty, the buffer might return a smaller block than expected 
-                for ch in range(0, block.shape[1]):
-                    if len(block_channels) < (ch + 1):
-                        block_channels.append(numpy.zeros(next_size, dtype='float32'))
+                # !!! If the source is empty, the buffer might return a smaller block than expected 
+                # Also, if not same number of channels, the block is down-mixed / up-mixed here
+                for ch in range(0, min(block.shape[1], self.channel_count)):
                     block_channels[ch] = numpy.sum([block_channels[ch], block[:,ch]], axis=0)
         
         # Forget empty sources
         for buf in empty_sources:
             self.sources.remove(buf)
+
+        # Handle case when all sources are empty
         if len(self.sources) is 0:
             if self.stop_when_empty:
                 raise StopIteration
             elif len(block_channels) is 0:
-                return numpy.zeros((next_size, 1), dtype='float32') # TODO: how many channels?
+                return numpy.zeros((next_size, self.channel_count), dtype='float32')
 
         return numpy.column_stack(block_channels)
 mixer.next = mixer.__next__ # Compatibility Python 2

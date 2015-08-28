@@ -312,7 +312,7 @@ class mixer_test(unittest.TestCase):
             for i in range(0, 3):
                 yield numpy.ones((3, 1)) * 0.01 * (i + 1)
 
-        mixer = stream.mixer()
+        mixer = stream.mixer(2)
         mixer.plug(source_stereo1())
         mixer.plug(source_mono1())
         numpy.testing.assert_array_equal(next(mixer), [
@@ -324,8 +324,8 @@ class mixer_test(unittest.TestCase):
             [0.02, 0]
         ])
         numpy.testing.assert_array_equal(next(mixer), [
-            [0.02],
-            [0.02]
+            [0.02, 0],
+            [0.02, 0]
         ])
         mixer.plug(source_stereo2())
         numpy.testing.assert_array_equal(next(mixer), [
@@ -350,15 +350,15 @@ class mixer_test(unittest.TestCase):
             for i in range(0, 3):
                 yield numpy.ones((3, 1)) * 0.01 * (i + 1)
 
-        mixer = stream.mixer()
+        mixer = stream.mixer(2)
         mixer.plug(source_mono())
         mixer.clock.run_after(1.5, mixer.plug, args=[source_stereo()])
 
         numpy.testing.assert_array_equal(next(mixer), [
-            [0.01], [0.01], [0.01], [0.02]
+            [0.01, 0], [0.01, 0], [0.01, 0], [0.02, 0]
         ])
         numpy.testing.assert_array_equal(next(mixer), [
-            [0.02], [0.02]
+            [0.02, 0], [0.02, 0]
         ])
         numpy.testing.assert_array_equal(next(mixer), [
             [0.1 + 0.03, 0.1],
@@ -380,7 +380,7 @@ class mixer_test(unittest.TestCase):
             for i in range(0, 3):
                 yield numpy.ones((3, 1)) * 0.01 * (i + 1)
 
-        mixer = stream.mixer()
+        mixer = stream.mixer(2)
         src1 = source_mono()
         src2 = source_stereo()
         mixer.plug(src2)
@@ -390,10 +390,10 @@ class mixer_test(unittest.TestCase):
         ])
         mixer.unplug(src2)
         numpy.testing.assert_array_equal(next(mixer), [
-            [0.01], [0.02]
+            [0.01, 0], [0.02, 0]
         ])
         numpy.testing.assert_array_equal(next(mixer), [
-            [0.02], [0.02]
+            [0.02, 0], [0.02, 0]
         ])
         mixer.unplug(src1)
         self.assertRaises(StopIteration, next, mixer)
@@ -402,25 +402,25 @@ class mixer_test(unittest.TestCase):
         config.frame_rate = 4
         config.block_size = 2
 
-        def source_stereo():
+        def source_mono():
             for i in range(0, 3):
-                yield numpy.ones((1, 2)) * 1 * (i + 1)
+                yield numpy.ones((1, 1)) * 1 * (i + 1)
 
-        mixer = stream.mixer(stop_when_empty=False)
+        mixer = stream.mixer(1, stop_when_empty=False)
         
         numpy.testing.assert_array_equal(next(mixer), [
             [0],
             [0]
         ])
 
-        mixer.plug(source_stereo())
+        mixer.plug(source_mono())
         numpy.testing.assert_array_equal(next(mixer), [
-            [1, 1],
-            [2, 2]
+            [1],
+            [2]
         ])
         numpy.testing.assert_array_equal(next(mixer), [
-            [3, 3],
-            [0, 0]
+            [3],
+            [0]
         ])
         numpy.testing.assert_array_equal(next(mixer), [
             [0],
