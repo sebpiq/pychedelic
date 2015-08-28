@@ -195,6 +195,10 @@ class write_wav(object):
         return self
 
     def __next__(self):
+        if self._block.shape[1] != self.infos['channel_count']:
+            raise ValueError('Received block with %s channels, while writing wav file with %s channels' 
+              % (self._block.shape[1], self.infos['channel_count'])) 
+
         wav.write_block(self.wfile, self._block)
         try:
             self._block = next(self.source)

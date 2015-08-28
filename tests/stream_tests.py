@@ -587,6 +587,7 @@ class write_wav_Test(unittest.TestCase):
 
         sink = stream.write_wav(source(), temp_file)
         self.assertEqual(sink.infos['frame_rate'], 44100)
+        self.assertEqual(sink.infos['channel_count'], 1)
 
         expected = numpy.concatenate(blocks)
         frame_rate, actual = sp_wavfile.read(temp_file.name)
@@ -612,9 +613,31 @@ class write_wav_Test(unittest.TestCase):
 
         sink = stream.write_wav(double(source()), temp_file)
         self.assertEqual(sink.infos['frame_rate'], 44100)
+        self.assertEqual(sink.infos['channel_count'], 2)
 
         expected = numpy.concatenate(blocks) * 2
         frame_rate, actual = sp_wavfile.read(temp_file.name)
         actual = actual / float(2**15)
         self.assertEqual(actual.shape, (44100 * 5, 2))
+        numpy.testing.assert_array_equal(expected.round(4), actual.round(4))
+
+    def write_incorrect_channel_count_test(self):
+        temp_file = NamedTemporaryFile()
+        got_error = False
+
+        def source():
+            yield numpy.ones((44100, 2)) * 0.1
+            yield numpy.ones((44100, 2)) * 0.1
+            yield numpy.ones((44100, 1)) * 0.1
+
+        try:
+            stream.write_wav(source(), temp_file)
+        except ValueError:
+            got_error = True
+
+        self.assertTrue(got_error)
+        expected = numpy.ones((44100 * 2, 2)) * 0.1
+        frame_rate, actual = sp_wavfile.read(temp_file.name)
+        actual = actual / float(2**15)
+        self.assertEqual(actual.shape, (44100 * 2, 2))
         numpy.testing.assert_array_equal(expected.round(4), actual.round(4))
