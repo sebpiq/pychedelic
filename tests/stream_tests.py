@@ -1,6 +1,6 @@
 import os
 import types
-from tempfile import NamedTemporaryFile
+from tempfile import TemporaryFile, NamedTemporaryFile
 import unittest
 
 import numpy
@@ -9,6 +9,7 @@ import scipy.io.wavfile as sp_wavfile
 from .__init__ import A440_MONO_16B, A440_STEREO_16B, STEPS_MONO_16B
 from pychedelic import stream
 from pychedelic import config
+from pychedelic.core import wav as core_wav
 
 
 class ramp_Test(unittest.TestCase):
@@ -641,3 +642,18 @@ class write_wav_Test(unittest.TestCase):
         actual = actual / float(2**15)
         self.assertEqual(actual.shape, (44100 * 2, 2))
         numpy.testing.assert_array_equal(expected.round(4), actual.round(4))
+
+    @unittest.skip('temporarily disabled cause too slow')
+    def reach_wav_size_limit_test(self):
+        temp_file = TemporaryFile('w')
+        
+        def source():
+            while True:
+                yield numpy.zeros((2**20, 1))
+
+        got_error = False
+        try:
+            stream.write_wav(source(), temp_file)
+        except core_wav.WavSizeLimitError:
+            got_error = True 
+        self.assertTrue(got_error)

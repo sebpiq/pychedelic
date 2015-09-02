@@ -1,5 +1,6 @@
 # TODO: support for 8-bit wavs ?
 import wave
+import struct
 
 from . import pcm
 
@@ -49,7 +50,12 @@ def read_block(wfile, block_size):
 
 
 def write_block(wfile, block):
-    wfile.writeframes(pcm.samples_to_string(block))
+    try:
+        wfile.writeframes(pcm.samples_to_string(block))
+    except struct.error:
+        if wfile.getnframes() * wfile.getsampwidth() >= 2**32:
+            raise WavSizeLimitError
+        else: raise
 
 
 def _get_file_infos(wfile):
@@ -66,5 +72,12 @@ def _get_file_infos(wfile):
 class FormatError(Exception):
     """
     Raised when attempting to read a wave file failed.
+    """
+    pass
+
+
+class WavSizeLimitError(Exception):
+    """
+    Raised when the size limit for wav files has been reached.
     """
     pass
