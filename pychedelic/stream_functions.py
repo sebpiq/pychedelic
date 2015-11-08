@@ -12,7 +12,7 @@ from .core import wav
 from .core import pcm
 from .core import buffering
 from .core import scheduling
-from . import chunk
+from . import block_functions
 from .config import config
 
 
@@ -23,9 +23,9 @@ def ramp(initial, *values):
     The following example generates a ramp that starts from 0, go to 1 in 10 seconds,
     then go back to 0 in 5 seonds: 
 
-        >>> stream.ramp(0, (1, 10), (0, 5))
+        >>> stream_functions.ramp(0, (1, 10), (0, 5))
     """
-    for start, step, frame_count in chunk._iter_ramps(initial, values):
+    for start, step, frame_count in block_functions._iter_ramps(initial, values):
         counter = 0
         acc = start - step
 
