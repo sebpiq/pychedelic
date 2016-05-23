@@ -45,6 +45,10 @@ class resample(object):
         self.set_ratio(1)
 
     def set_ratio(self, val):
+        """
+        Ratio by which the output frame length will be changed. 
+        For example If `1/2`, there will twice as many frames in the output.
+        """
         self.ratio = val
         self.frame_in = 0
         self.frame_out = -val
