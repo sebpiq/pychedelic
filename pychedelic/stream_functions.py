@@ -46,12 +46,13 @@ class resample(object):
 
     def set_ratio(self, val):
         """
-        Ratio by which the output frame length will be changed. 
-        For example If `1/2`, there will twice as many frames in the output.
+        Ratio by which the output frame rate will be changed. 
+        For example if `2`, the output will have twice as much frames as the input.
         """
         self.ratio = val
+        self._inv_ratio = 1 / float(val)
         self.frame_in = 0
-        self.frame_out = -val
+        self.frame_out = -self._inv_ratio # To offset the values we get with numpy's cumsum
 
     def __iter__(self):
         return self
@@ -60,14 +61,14 @@ class resample(object):
         if self.ratio == 1: return self.source.pull(config.block_size)
         overlap = 1 # We always keep the last `frame_in` for next iteration
 
-        x_out = self.frame_out + (numpy.ones(config.block_size) * self.ratio).cumsum()
+        x_out = self.frame_out + (numpy.ones(config.block_size) * self._inv_ratio).cumsum()
         x_in = numpy.arange(self.frame_in, math.ceil(x_out[-1]) + 1)
 
         self.frame_out = x_out[-1]
         next_size = math.ceil(len(x_in))
         # If next `frame_out` is in interval [x_in[-2], x_in[-1]),
         # it means we'll need x_in[-2] for next iteration
-        overlap += (self.frame_out + self.ratio) < x_in[-1]
+        overlap += (self.frame_out + self._inv_ratio) < x_in[-1]
         self.frame_in = x_in[-1] + 1 - overlap
 
         block_in = self.source.pull(next_size, overlap=overlap, pad=True)

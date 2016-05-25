@@ -10,7 +10,7 @@ from pychedelic import config
 from .__init__ import STEPS_STEREO_16B, A440_MONO_16B
 
 
-class ramp_Test(unittest.TestCase):
+class ramp_test(unittest.TestCase):
 
     def tearDown(self):
         config.frame_rate = 44100
@@ -34,14 +34,14 @@ class ramp_Test(unittest.TestCase):
         self.assertEqual(ramp_samples.shape, (int(0.02 * 44100), 1))
 
 
-class Resampler_test(unittest.TestCase):
+class resample_test(unittest.TestCase):
 
     def upsample_test(self):
         # IN:  0     1     2
         # OUT: 0 1 2 3 4 5 6
         block = numpy.arange(0, 6, 2).reshape(3, 1)
         numpy.testing.assert_array_equal(
-            block_functions.resample(block, 1 / 3.0).round(8),
+            block_functions.resample(block, 3).round(8),
             numpy.round([
                 [0 * 1/3.0], [2 * 1/3.0], [4 * 1/3.0], [6 * 1/3.0],
                 [8 * 1/3.0], [10 * 1/3.0], [12 * 1/3.0]
@@ -53,7 +53,7 @@ class Resampler_test(unittest.TestCase):
         # OUT: 0      1      2
         block = numpy.arange(0, 3, 0.5).reshape(6, 1)
         numpy.testing.assert_array_equal(
-            block_functions.resample(block, 7/3.0).round(8),
+            block_functions.resample(block, 3.0/7).round(8),
             numpy.round([[0], [0.5 * 7 / 3.0], [1 * 7 / 3.0]], 8)
         )
 
@@ -64,7 +64,7 @@ class Resampler_test(unittest.TestCase):
             numpy.arange(0, 45, 5)
         ]).transpose()
         numpy.testing.assert_array_equal(
-            block_functions.resample(block, 4).round(8),
+            block_functions.resample(block, 1/4.0).round(8),
             numpy.round([[0, 0], [4 * 0.5, 4 * 5], [8 * 0.5, 8 * 5]], 8)
         )
 

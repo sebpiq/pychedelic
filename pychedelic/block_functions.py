@@ -46,11 +46,12 @@ def resample(block, ratio):
     Resamples `block`, returning a new block that has a play rate of `ratio`.
     """
     if ratio == 1: return block
+    inv_ratio = 1 / float(ratio)
 
     frame_count_in = block.shape[0]
-    frame_count_out = math.floor((frame_count_in - 1) / ratio) + 1
+    frame_count_out = math.floor((frame_count_in - 1) * ratio) + 1
     x_in = numpy.arange(0, frame_count_in)
-    x_out = numpy.arange(0, frame_count_out) * ratio
+    x_out = numpy.arange(0, frame_count_out) / ratio
     
     block_out = []
     for block_ch in block.T:

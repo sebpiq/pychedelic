@@ -6,7 +6,7 @@ import unittest
 import numpy
 import scipy.io.wavfile as sp_wavfile
 
-from .__init__ import A440_MONO_16B, A440_STEREO_16B, STEPS_MONO_16B, BROKEN_WAV
+from .__init__ import A440_MONO_16B, A440_STEREO_16B, STEPS_MONO_16B
 from pychedelic import stream_functions
 from pychedelic import config
 from pychedelic.core import wav as core_wav
@@ -66,7 +66,7 @@ class resampler_test(unittest.TestCase):
                 yield numpy.arange(i * 2 * 3, (i + 1) * 2 * 3, 2).reshape(3, 1)
 
         resampler = stream_functions.resample(gen())
-        resampler.set_ratio(1 / 3.0)
+        resampler.set_ratio(3.0)
 
         # IN:  0     1     2
         # OUT: 0 1 2 3 4 5 6
@@ -113,7 +113,7 @@ class resampler_test(unittest.TestCase):
                 yield block_in
 
         resampler = stream_functions.resample(gen())
-        ratio = 2 / 3.0
+        ratio = 3.0 / 2
         resampler.set_ratio(ratio)
 
 
@@ -121,13 +121,13 @@ class resampler_test(unittest.TestCase):
         # OUT: 0   1   .
         numpy.testing.assert_array_equal(
             next(resampler).round(8),
-            numpy.round([[0, 0], [1 * -2 * ratio, 1 * 2 * ratio]], 8)
+            numpy.round([[0, 0], [1 * -2 / ratio, 1 * 2 / ratio]], 8)
         )
         # IN:  1     2
         # OUT:   2   3
         numpy.testing.assert_array_equal(
             next(resampler).round(8),
-            numpy.round([[2 * -2 * ratio, 2 * 2 * ratio], [3 * -2 * ratio, 3 * 2 * ratio]], 8)
+            numpy.round([[2 * -2 / ratio, 2 * 2 / ratio], [3 * -2 / ratio, 3 * 2 / ratio]], 8)
         )
 
 
@@ -150,26 +150,26 @@ class resampler_test(unittest.TestCase):
                 yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
 
         resampler = stream_functions.resample(gen())
-        ratio = 7/3.0
+        ratio = 3.0 / 7
         resampler.set_ratio(ratio)
 
         # IN:  0  1  2  3  .  .
         # OUT: 0      1      .
         numpy.testing.assert_array_equal(
             next(resampler).round(8),
-            numpy.round([[0], [1 * 0.5 * ratio]], 8)
+            numpy.round([[0], [1 * 0.5 / ratio]], 8)
         )
         # IN:  3  4  5  6  7
         # OUT:      2      3
         numpy.testing.assert_array_equal(
             next(resampler).round(8),
-            numpy.round([[2 * 0.5 * ratio], [3 * 0.5 * ratio]], 8)
+            numpy.round([[2 * 0.5 / ratio], [3 * 0.5 / ratio]], 8)
         )
         # IN:  9  a  b  c
         # OUT:  4      5
         numpy.testing.assert_array_equal(
             next(resampler).round(8),
-            numpy.round([[4 * 0.5 * ratio], [5 * 0.5 * ratio]], 8)
+            numpy.round([[4 * 0.5 / ratio], [5 * 0.5 / ratio]], 8)
         )
 
     def downsample2_test(self):
@@ -188,19 +188,19 @@ class resampler_test(unittest.TestCase):
                 yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
 
         resampler = stream_functions.resample(gen())
-        ratio = 4
+        ratio = 1.0 / 4
         resampler.set_ratio(ratio)
 
         # IN:  0 1 2 3 4 5 6 7 8
         # OUT: 0       1       2
         numpy.testing.assert_array_equal(
             next(resampler).round(8),
-            numpy.round([[0], [1 * 0.5 * ratio], [2 * 0.5 * ratio]], 8)
+            numpy.round([[0], [1 * 0.5 / ratio], [2 * 0.5 / ratio]], 8)
         )
         # ...
         numpy.testing.assert_array_equal(
             next(resampler).round(8),
-            numpy.round([[3 * 0.5 * ratio], [4 * 0.5 * ratio], [5 * 0.5 * ratio]], 8)
+            numpy.round([[3 * 0.5 / ratio], [4 * 0.5 / ratio], [5 * 0.5 / ratio]], 8)
         )
 
     def ratio1_test(self):
@@ -248,7 +248,7 @@ class resampler_test(unittest.TestCase):
         config.block_size = frame_count
 
         f0 = 440
-        ratio = 0.99999
+        ratio = 1/0.99999
 
         time = numpy.arange(0, frame_count) / float(config.frame_rate)
         samples = numpy.cos(2 * numpy.pi * f0 * time)
@@ -259,7 +259,7 @@ class resampler_test(unittest.TestCase):
         self.assertEqual(round(zcr_f0(samples), 3), round(f0, 3))
 
         samples2 = next(resampler)[:,0]
-        self.assertEqual(round(zcr_f0(samples2), 3), round(f0 * ratio, 3))
+        self.assertEqual(round(zcr_f0(samples2), 3), round(f0 / ratio, 3))
 
     def source_exhausted_test(self):
         """
@@ -277,16 +277,16 @@ class resampler_test(unittest.TestCase):
                 yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
 
         resampler = stream_functions.resample(gen())
-        ratio = 4
+        ratio = 1.0 / 4
         resampler.set_ratio(ratio)
 
         numpy.testing.assert_array_equal(
             next(resampler).round(8),
-            numpy.round([[0], [1 * 0.5 * ratio]], 8)
+            numpy.round([[0], [1 * 0.5 / ratio]], 8)
         )
         numpy.testing.assert_array_equal(
             next(resampler).round(8),
-            numpy.round([[2 * 0.5 * ratio], [0]], 8)
+            numpy.round([[2 * 0.5 / ratio], [0]], 8)
         )
         self.assertRaises(StopIteration, next, resampler)
 
@@ -575,8 +575,6 @@ class read_wav_Test(unittest.TestCase):
 
     def read_invalid_wav_test(self):
         # __file__ is obviously not a wav file ...
-        blocks = stream_functions.read_wav(BROKEN_WAV)
-        stream_functions.concatenate(blocks)
         self.assertRaises(core_wav.FormatError, stream_functions.read_wav, __file__)
 
 
