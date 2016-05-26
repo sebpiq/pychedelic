@@ -69,10 +69,10 @@ class resample(object):
         while True:
             # Size of the returned (and interpolated) block
             # (<space to place interpolated frames> - <offset of next frame out>) * <ratio>
-            block_out_size = (1 + int(self.ratio * (
+            block_out_size = int(1 + self.ratio * (
                 (block_in.shape[0] - 1) 
                 - ((self.counter_out - self.counter_in) + 1 / self.ratio)
-            )))
+            ))
             
             # If not enough data to interpolate on at least one frame, fetch more.
             if block_out_size: break

@@ -154,6 +154,29 @@ class resampler_test(unittest.TestCase):
             (numpy.array([[0], [1], [2]]) * 0.5 / ratio).round(8)
         )
 
+    def downsample3_test(self):
+        """
+        Testing high downsampling, several blocks of data in fetched for on frame out.
+        """
+
+        def gen():
+            """
+            [[0], [0.5], [1]] [[1.5], [2], [2.5]] ...
+            """
+            for i in range(0, 6):
+                yield numpy.arange(i * 3 * 0.5, (i + 1) * 3 * 0.5, 0.5).reshape(3, 1)
+
+        resampler = stream_functions.resample(gen())
+        ratio = 1.0 / 8
+        resampler.set_ratio(ratio)
+
+        # IN:  0 1 2 3 4 5 6 7 8 9 a b c d e f g h
+        # OUT: 0               1               2
+        numpy.testing.assert_array_equal(
+            stream_functions.concatenate(resampler).round(8),
+            (numpy.array([[0], [1], [2]]) * (0.5 / ratio)).round(8)
+        )
+
     def ratio1_test(self):
         """
         Ratio 1 test.
