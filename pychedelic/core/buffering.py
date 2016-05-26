@@ -10,27 +10,7 @@ class Buffer(object):
         self._read_pos = 0              # position offset in `_blocks`
         self._source_exhausted = False  # True when the source raised StopIteration
 
-    def fill(self, to_size):
-        while self._size < to_size:
-            try:
-                block = next(self.source)
-
-            # Source exhausted
-            except StopIteration:
-                break
-
-            else:
-                self._blocks.append(block)
-                self._size += block.shape[0]
-
-        if len(self._blocks):
-            return self._make_block_out(self._size)
-        else: raise StopIteration
-
-    def pull(self, block_size, overlap=0, pad=False):
-        if overlap and overlap > block_size:
-            raise ValueError('overlap cannot be more than block_size')
-
+    def pull(self, block_size, pad=False):
         # First, get as much blocks of data as needed.
         if not self._source_exhausted:
             while self._size < block_size:
@@ -44,44 +24,29 @@ class Buffer(object):
                 else:
                     self._blocks.append(block)
                     self._size += block.shape[0]
-        
-        # Not the 
-        block_out_size = block_size
 
-        # If the source is exhausted, but pad is True, and there is still some samples,
-        # we just pad the output with zeros.
-        if self._source_exhausted:
-            if self._size > 0:
-                if pad is True:
-                    channel_count = self._blocks[0].shape[1]
-                    self._blocks.append(numpy.zeros((block_size - self._size, channel_count)))
-                else: block_out_size = numpy.ceil(self._size)
-            else:
-                raise StopIteration
+        if self._source_exhausted and self._size <= 0: 
+            raise StopIteration
 
-        block_out = self._make_block_out(block_out_size)
+        # If there is not enough frames, but pad is True we just pad the output with zeros.
+        block_out = self._make_block_out(min(block_size, self._size))
+        if block_out.shape[0] < block_size and pad is True:
+            block_out = numpy.concatenate([
+                block_out,
+                numpy.zeros((block_size - block_out.shape[0], block_out.shape[1]))
+            ])
 
         # Update positions
-        self._read_pos += block_size - overlap
-        self._size -= block_size - overlap
+        self._read_pos += block_size
+        self._size -= block_size
 
         # Discard used blocks
-        block = self._blocks[0]
-        while block.shape[0] <= self._read_pos:
-            self._blocks.pop(0)
-            self._read_pos -= block.shape[0]
-            if not self._blocks: break
-            else: block = self._blocks[0]
+        while self._blocks:
+            block = self._blocks[0]
+            if block.shape[0] > self._read_pos: break
+            self._read_pos -= self._blocks.pop(0).shape[0]
+        
         return block_out
-
-    def pull_all(self):
-        blocks = []
-        while True:
-            try:
-                blocks.append(next(self.source))
-            except StopIteration:
-                break
-        return numpy.concatenate(blocks, axis=0)
 
     def _make_block_out(self, block_size):
         """

@@ -41,7 +41,8 @@ def ramp(initial, *values):
 class resample(object):
 
     def __init__(self, source):
-        self.source = buffering.Buffer(source)
+        self.source = source
+        self.previous_frame = None
         self.set_ratio(1)
 
     def set_ratio(self, val):
@@ -49,33 +50,48 @@ class resample(object):
         Ratio by which the output frame rate will be changed. 
         For example if `2`, the output will have twice as much frames as the input.
         """
-        self.ratio = val
-        self._inv_ratio = 1 / float(val)
-        self.frame_in = 0
-        self.frame_out = -self._inv_ratio # To offset the values we get with numpy's cumsum
+        self.ratio = float(val)
+        self.counter_out = -1 / self.ratio
+        self.counter_in = 0
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self.ratio == 1: return self.source.pull(config.block_size)
-        overlap = 1 # We always keep the last `frame_in` for next iteration
+        block_out_size = 0
 
-        x_out = self.frame_out + (numpy.ones(config.block_size) * self._inv_ratio).cumsum()
-        x_in = numpy.arange(self.frame_in, math.ceil(x_out[-1]) + 1)
+        # Get a new block, concatenate with last frame from previous block for the needs of
+        # interpolation.
+        block_in = next(self.source)
+        if not self.previous_frame is None:
+            block_in = numpy.concatenate([self.previous_frame, block_in])
 
-        self.frame_out = x_out[-1]
-        next_size = math.ceil(len(x_in))
-        # If next `frame_out` is in interval [x_in[-2], x_in[-1]),
-        # it means we'll need x_in[-2] for next iteration
-        overlap += (self.frame_out + self._inv_ratio) < x_in[-1]
-        self.frame_in = x_in[-1] + 1 - overlap
+        while True:
+            # Size of the returned (and interpolated) block
+            # (<space to place interpolated frames> - <offset of next frame out>) * <ratio>
+            block_out_size = (1 + int(self.ratio * (
+                (block_in.shape[0] - 1) 
+                - ((self.counter_out - self.counter_in) + 1 / self.ratio)
+            )))
+            
+            # If not enough data to interpolate on at least one frame, fetch more.
+            if block_out_size: break
+            block_in = numpy.concatenate([ block_in, next(self.source) ])
 
-        block_in = self.source.pull(next_size, overlap=overlap, pad=True)
+        times_out = self.counter_out + (numpy.ones(block_out_size) / self.ratio).cumsum()
+        times_in = self.counter_in + numpy.arange(0, block_in.shape[0])
+
+        # For each column of the block received, do the interpolation and concatenate 
+        # to form a new block to return.
         block_out = []
-        for block_ch in block_in.T:
-            block_out.append(numpy.interp(x_out, x_in, block_ch))
-        block_out = numpy.vstack(block_out).transpose()
+        for block_col in block_in.T:
+            block_out.append(numpy.interp(times_out, times_in, block_col))
+        block_out = numpy.vstack(block_out).T
+
+        # Prepare next iteration
+        self.counter_in = times_in[-1]
+        self.counter_out = times_out[-1]
+        self.previous_frame = block_in[-1:, :]
 
         return block_out
 resample.next = resample.__next__ # Compatibility Python 2
