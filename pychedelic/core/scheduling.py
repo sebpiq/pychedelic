@@ -7,7 +7,7 @@ class Clock(object):
 
         def gain(source):
             clock = Clock()
-            buffered_source = Buffer(source)
+            stream = StreamControl(source)
             block_size = 1024
 
             context = { 'gain': 1 }
@@ -24,7 +24,7 @@ class Clock(object):
                 next_size = clock.advance(block_size)
 
                 # Pull all frames until next event
-                yield buffered_source.pull(next_size) * context['gain']
+                yield stream.pull(next_size) * context['gain']
     """
 
     def __init__(self):

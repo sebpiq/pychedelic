@@ -109,10 +109,10 @@ class mixer(object):
         self.stop_when_empty = stop_when_empty
 
     def plug(self, source):
-        self.sources.append(buffering.Buffer(source))
+        self.sources.append(buffering.StreamControl(source))
 
     def unplug(self, source):
-        self.sources = filter(lambda buf: not(buf.source is source), self.sources)
+        self.sources = filter(lambda stream: not(stream.source is source), self.sources)
 
     def __iter__(self):
         return self
@@ -123,11 +123,11 @@ class mixer(object):
         block_channels = [numpy.zeros(next_size, dtype='float32') for ch in range(self.channel_count)]
 
         # Iterating through all the sources and do the mixing
-        for buf in self.sources:
+        for stream in self.sources:
             try:
-                block = buf.pull(next_size, pad=True)
+                block = stream.pull(next_size, pad=True)
             except StopIteration:
-                empty_sources.append(buf)
+                empty_sources.append(stream)
             else:
                 # !!! If the source is empty, the buffer might return a smaller block than expected 
                 # Also, if not same number of channels, the block is down-mixed / up-mixed here
@@ -135,8 +135,8 @@ class mixer(object):
                     block_channels[ch] = numpy.sum([block_channels[ch], block[:,ch]], axis=0)
         
         # Forget empty sources
-        for buf in empty_sources:
-            self.sources.remove(buf)
+        for stream in empty_sources:
+            self.sources.remove(stream)
 
         # Handle case when all sources are empty
         if len(self.sources) is 0:
@@ -146,6 +146,30 @@ class mixer(object):
                 return numpy.zeros((next_size, self.channel_count), dtype='float32')
 
         return numpy.column_stack(block_channels)
+mixer.next = mixer.__next__ # Compatibility Python 2
+
+
+class window(object):
+    """
+    If `pad` is `False`, when the source has not enough data left for a windows, 
+    `StopIteration` will be thrown.
+    """
+
+    def __init__(self, source, window_size, hop_size, pad=True):
+        self.source = source
+        self.stream = buffering.StreamControl(source)
+        self.hop_size = hop_size
+        self.window_size = window_size
+
+    def __iter__(self): 
+        return self
+
+    def __next__(self):
+        next_size = self.window_size
+        while self.stream.size < self.window_size:
+            self.stream.push(next(self.source))
+        self.queue.pull(next_size)
+
 mixer.next = mixer.__next__ # Compatibility Python 2
 
 
@@ -169,7 +193,7 @@ class iter(object):
                 start_frame = math.floor(position * config.frame_rate)
                 end_frame = math.floor(self.end * config.frame_rate)
                 yield self.samples[start_frame:end_frame,:]
-        self.buffer = buffering.Buffer(_source())
+        self.buffer = buffering.StreamControl(_source())
 
     def __iter__(self):
         return self
@@ -252,11 +276,11 @@ def concatenate(source):
 
 
 def playback(source):
-    buf = buffering.Buffer(source)
-    channel_count = buf.fill(1).shape[1]
+    stream = buffering.StreamControl(source)
+    channel_count = stream.fill(1).shape[1]
 
     def callback(in_data, current_time, time_info, status):
-        block = buf.pull(current_time)
+        block = stream.pull(current_time)
         block_size = block.shape[0]
         if block_size == current_time:
             return (pcm.float_to_int(block), pyaudio.paContinue)

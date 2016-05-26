@@ -156,7 +156,7 @@ class resampler_test(unittest.TestCase):
 
     def downsample3_test(self):
         """
-        Testing high downsampling, several blocks of data in fetched for on frame out.
+        Testing high downsampling, several blocks of incoming data fetched for one frame out.
         """
 
         def gen():
