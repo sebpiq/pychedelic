@@ -7,22 +7,46 @@ from pychedelic.core.buffering import Buffer, StreamControl
 
 class Buffer_test(unittest.TestCase):
 
-    def get_with_offset_test(self):
+    def read_with_offset_test(self):
         buf = Buffer()
         buf.push(numpy.array([ numpy.arange(0, 10), numpy.arange(0, 10) ]).T)
         buf.push(numpy.array([ numpy.arange(10, 20), numpy.arange(10, 20) ]).T)
 
         numpy.testing.assert_array_equal(
-            buf.get(0, 10),
+            buf.read(0, 10),
             numpy.array([ numpy.arange(0, 10), numpy.arange(0, 10) ]).T
         )
         numpy.testing.assert_array_equal(
-            buf.get(5, 10),
+            buf.read(5, 10),
             numpy.array([ numpy.arange(5, 15), numpy.arange(5, 15) ]).T
         )
         numpy.testing.assert_array_equal(
-            buf.get(0, 20),
+            buf.read(0, 20),
             numpy.array([ numpy.arange(0, 20), numpy.arange(0, 20) ]).T
+        )
+
+    def read_offset_several_blocks_test(self):
+        """
+        Test for a bug fix
+        """
+        buf = Buffer()
+        buf.push(numpy.array([ numpy.arange(0, 3) ]).T)
+        buf.push(numpy.array([ numpy.arange(3, 6) ]).T)
+        buf.push(numpy.array([ numpy.arange(6, 9) ]).T)
+        buf.push(numpy.array([ numpy.arange(9, 12) ]).T)
+        buf.push(numpy.array([ numpy.arange(12, 15) ]).T)
+
+        numpy.testing.assert_array_equal(
+            buf.read(4, 1),
+            numpy.array([ [4] ])
+        )
+        numpy.testing.assert_array_equal(
+            buf.read(8, 1),
+            numpy.array([ [8] ])
+        )
+        numpy.testing.assert_array_equal(
+            buf.read(13, 1),
+            numpy.array([ [13] ])
         )
 
     def shift_test(self):
@@ -34,7 +58,7 @@ class Buffer_test(unittest.TestCase):
         self.assertEqual(len(buf._blocks), 2)
 
         numpy.testing.assert_array_equal(
-            buf.get(0, 4),
+            buf.read(0, 4),
             numpy.array([ numpy.arange(2, 6), numpy.arange(2, 6) ]).T
         )
 
@@ -42,7 +66,7 @@ class Buffer_test(unittest.TestCase):
         self.assertEqual(len(buf._blocks), 2)
 
         numpy.testing.assert_array_equal(
-            buf.get(1, 4),
+            buf.read(1, 4),
             numpy.array([ numpy.arange(8, 12), numpy.arange(8, 12) ]).T
         )
         
@@ -50,7 +74,7 @@ class Buffer_test(unittest.TestCase):
         self.assertEqual(len(buf._blocks), 1)
 
         numpy.testing.assert_array_equal(
-            buf.get(3, 3),
+            buf.read(3, 3),
             numpy.array([ numpy.arange(15, 18), numpy.arange(15, 18) ]).T
         )
 

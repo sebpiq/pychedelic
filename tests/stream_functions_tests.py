@@ -369,6 +369,110 @@ class mixer_test(unittest.TestCase):
         ])
 
 
+class window_test(unittest.TestCase):
+
+    def no_pad_test(self):
+        def gen():
+            yield numpy.array([[0, 0]])
+            yield numpy.array([[1, 1]])
+            yield numpy.array([[2, 2]])
+        window = stream_functions.window(gen(), 2, 1, pad=False)
+        numpy.testing.assert_array_equal(next(window), [[0, 0], [1, 1]])
+        numpy.testing.assert_array_equal(next(window), [[1, 1], [2, 2]])
+        self.assertRaises(StopIteration, next, window)
+
+    def no_pad_decimal_hop_size_test(self):
+        def gen():
+            yield numpy.array([[0, 0]])
+            yield numpy.array([[1, 1]])
+            yield numpy.array([[2, 2]])
+        window = stream_functions.window(gen(), 2, 0.5, pad=False)
+        # read position = 0
+        numpy.testing.assert_array_equal(next(window), [[0, 0], [1, 1]])
+        # read position = 0.5
+        numpy.testing.assert_array_equal(next(window), [[0, 0], [1, 1]])
+        # read position = 1.0       
+        numpy.testing.assert_array_equal(next(window), [[1, 1], [2, 2]])
+        # read position = 1.5
+        numpy.testing.assert_array_equal(next(window), [[1, 1], [2, 2]])
+        # read position = 2
+        self.assertRaises(StopIteration, next, window)
+
+    def pad_test(self):
+        def gen():
+            yield numpy.array([[0, 0]])
+            yield numpy.array([[1, 1]])
+            yield numpy.array([[2, 2]])
+        window = stream_functions.window(gen(), 3, 1)
+        numpy.testing.assert_array_equal(next(window), [[0, 0], [1, 1], [2, 2]])
+        numpy.testing.assert_array_equal(next(window), [[1, 1], [2, 2], [0, 0]])
+        numpy.testing.assert_array_equal(next(window), [[2, 2], [0, 0], [0, 0]])
+        self.assertRaises(StopIteration, next, window)
+
+    def win_size_exact_and_pad_test(self):
+        """
+        Test when padding is True, and last window falls exactly, without actual need for padding. 
+        """
+        def gen():
+            for i in range(2):
+                yield numpy.array([[i * 11, i * 11]])
+        window = stream_functions.window(gen(), 1, 1, pad=True)
+        numpy.testing.assert_array_equal(
+            stream_functions.concatenate(window), 
+            [[0, 0], [11, 11]]
+        )
+
+    def overlap_cut_test(self):
+        """
+        Test overlap with pulled blocks smaller than source blocks.
+        """
+        def gen():
+            yield numpy.tile(numpy.arange(0, 6), (2, 1)).transpose()
+        window = stream_functions.window(gen(), 3, 1)
+        blocks = [next(window) for i in range(0, 4)]
+        numpy.testing.assert_array_equal(blocks, [
+            [[0, 0], [1, 1], [2, 2]], [[1, 1], [2, 2], [3, 3]],
+            [[2, 2], [3, 3], [4, 4]], [[3, 3], [4, 4], [5, 5]],
+        ])
+
+    def overlap_concatenate_test(self):
+        """
+        Test overlap with pulled blocks bigger than source blocks.
+        """
+        def gen():
+            for i in range(6):
+                yield numpy.array([[i * 11, i * 11]])
+        window = stream_functions.window(gen(), 2, 1)
+        blocks = [next(window) for i in range(0, 5)]
+        numpy.testing.assert_array_equal(blocks, [
+            [[0, 0], [11, 11]], [[11, 11], [22, 22]],
+            [[22, 22], [33, 33]], [[33, 33], [44, 44]],
+            [[44, 44], [55, 55]]
+        ])
+
+    def overlap_almost_static_test(self):
+        """
+        Test with such a big overlap that same block is returned several times
+        """
+        def gen():
+            for i in range(6):
+                yield numpy.array([[i * 11]])
+        window = stream_functions.window(gen(), 3, 0.5)
+        numpy.testing.assert_array_equal(next(window), [[0], [11], [22]])
+        numpy.testing.assert_array_equal(next(window), [[0], [11], [22]])
+        numpy.testing.assert_array_equal(next(window), [[11], [22], [33]])
+
+    def hop_size_bigger_than_win_size_test(self):
+        def gen():
+            for i in range(6):
+                yield numpy.array([[i * 11, i * 11]])
+        window = stream_functions.window(gen(), 2, 3, pad=True)
+        numpy.testing.assert_array_equal(
+            stream_functions.concatenate(window), 
+            [[0, 0], [11, 11], [33, 33], [44, 44]]
+        )
+
+
 class iter_Test(unittest.TestCase):
 
     def tearDown(self):

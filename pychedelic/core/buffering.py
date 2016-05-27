@@ -24,20 +24,32 @@ class Buffer(object):
             if block.shape[0] > self._read_pos: break
             self._read_pos -= self._blocks.pop(0).shape[0]
 
-    def get(self, offset, block_size):
+    def read(self, offset, block_size):
         channel_count = self._blocks[0].shape[1]
         block_out = numpy.zeros((block_size, channel_count))
-        read_pos = self._read_pos + offset
-        write_pos = 0
-        i = 0
+        read_start_pos = self._read_pos + offset
 
+        # First, find the first block that we can use to read data from
+        i = 0
+        block_start_pos = 0
+        while True:
+            block = self._blocks[i]
+            if read_start_pos < (block_start_pos + block.shape[0]): break
+            i += 1
+            block_start_pos += block.shape[0]
+        
+        # Then iterate blocks and write data `block_out`
+        write_pos = 0
         while write_pos < block_size:
             block = self._blocks[i]
-            to_read = min(block.shape[0] - read_pos, block_size - write_pos)
-            block_out[write_pos:write_pos+to_read,:] = block[read_pos:read_pos+to_read,:]
+
+            to_read_offset = max(read_start_pos - block_start_pos, 0)
+            to_read = min(block.shape[0] - to_read_offset, block_size - write_pos)
+
+            block_out[write_pos:write_pos+to_read,:] = block[to_read_offset:to_read_offset+to_read,:]
             write_pos += to_read
-            read_pos = 0
             i += 1
+            block_start_pos += block.shape[0]
 
         return block_out
 
@@ -75,7 +87,7 @@ class StreamControl(object):
             raise StopIteration
 
         # If there is not enough frames, but pad is True we just pad the output with zeros.
-        block_out = self._buffer.get(0, min(block_size, self._buffer.size))
+        block_out = self._buffer.read(0, min(block_size, self._buffer.size))
         if block_out.shape[0] < block_size and pad is True:
             block_out = numpy.concatenate([
                 block_out,
