@@ -24,9 +24,9 @@ class Buffer(object):
             if block.shape[0] > self._read_pos: break
             self._read_pos -= self._blocks.pop(0).shape[0]
 
-    def read(self, offset, block_size):
+    def read(self, offset, block_out_size):
         channel_count = self._blocks[0].shape[1]
-        block_out = numpy.zeros((block_size, channel_count))
+        block_out = numpy.zeros((block_out_size, channel_count))
         read_start_pos = self._read_pos + offset
 
         # First, find the first block that we can use to read data from
@@ -40,11 +40,11 @@ class Buffer(object):
         
         # Then iterate blocks and write data `block_out`
         write_pos = 0
-        while write_pos < block_size:
+        while write_pos < block_out_size:
             block = self._blocks[i]
 
             to_read_offset = max(read_start_pos - block_start_pos, 0)
-            to_read = min(block.shape[0] - to_read_offset, block_size - write_pos)
+            to_read = min(block.shape[0] - to_read_offset, block_out_size - write_pos)
 
             block_out[write_pos:write_pos+to_read,:] = block[to_read_offset:to_read_offset+to_read,:]
             write_pos += to_read
@@ -69,10 +69,10 @@ class StreamControl(object):
         self._buffer = Buffer()
         self._source_exhausted = False  # True when the source raised StopIteration
 
-    def pull(self, block_size, pad=False):
+    def pull(self, block_out_size, pad=False):
         # First, get as much blocks of data as needed.
         if not self._source_exhausted:
-            while self._buffer.size < block_size:
+            while self._buffer.size < block_out_size:
                 try:
                     block = next(self.source)
 
@@ -87,14 +87,14 @@ class StreamControl(object):
             raise StopIteration
 
         # If there is not enough frames, but pad is True we just pad the output with zeros.
-        block_out = self._buffer.read(0, min(block_size, self._buffer.size))
-        if block_out.shape[0] < block_size and pad is True:
+        block_out = self._buffer.read(0, min(block_out_size, self._buffer.size))
+        if block_out.shape[0] < block_out_size and pad is True:
             block_out = numpy.concatenate([
                 block_out,
-                numpy.zeros((block_size - block_out.shape[0], block_out.shape[1]))
+                numpy.zeros((block_out_size - block_out.shape[0], block_out.shape[1]))
             ])
 
         # Discard used blocks
-        self._buffer.shift(block_size)
+        self._buffer.shift(block_out_size)
         
         return block_out

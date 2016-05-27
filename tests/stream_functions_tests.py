@@ -472,6 +472,31 @@ class window_test(unittest.TestCase):
             [[0, 0], [11, 11], [33, 33], [44, 44]]
         )
 
+    def get_archive_test(self):
+        def gen():
+            for i in range(6):
+                yield numpy.array([[i * 11, i * 11]])
+        window = stream_functions.window(gen(), 2, 2, archive_size=3)
+        block = next(window)
+        numpy.testing.assert_array_equal(block, [[0, 0], [11, 11]])
+        
+        block = next(window)
+        numpy.testing.assert_array_equal(block, [[22, 22], [33, 33]])
+        numpy.testing.assert_array_equal(
+            window._buffer._blocks, 
+            [[[11, 11]], [[22, 22]], [[33, 33]]]
+        )
+        numpy.testing.assert_array_equal(window.get_archive(2), [[22, 22], [33, 33]])
+
+        block = next(window)
+        numpy.testing.assert_array_equal(block, [[44, 44], [55, 55]])
+        numpy.testing.assert_array_equal(
+            window._buffer._blocks, 
+            [[[33, 33]], [[44, 44]], [[55, 55]]]
+        )
+        numpy.testing.assert_array_equal(window.get_archive(1), [[55, 55]])
+        numpy.testing.assert_array_equal(window.get_archive(3), [[33, 33], [44, 44], [55, 55]])
+
 
 class iter_Test(unittest.TestCase):
 

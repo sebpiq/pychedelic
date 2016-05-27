@@ -155,53 +155,73 @@ class window(object):
     `StopIteration` will be thrown.
 
     `hop_size` can be a decimal number.
+    `archive_size` is used to keep data in memory even after it has been handled.
+    The data in memory can be used in conjunction with `get_archive`. 
     """
 
-    def __init__(self, source, window_size, hop_size, pad=True):
+    def __init__(self, source, window_size, hop_size, pad=True, archive_size=0):
         self.source = source
         self.hop_size = hop_size
         self.window_size = window_size
+        self.archive_size = archive_size
         self.pad = pad
         
-        self.buffer = buffering.Buffer()
-        self._offset = 0
-        self._pad_count = False
+        self._buffer = buffering.Buffer()       # The underlying buffer that will hold the data
+        self._offset = 0                        # The read offset in the buffer
+        self._pad_count = False                 # Counts how many frame of padding have been generated
 
     def __iter__(self):
         return self
 
     def __next__(self):
+        # If we're not padding, just fetch some data from the source
+        # and add it to the buffer
         if self._pad_count is False:
-            while self._available_size < self.window_size:
+            while self._available_frame_count < self.window_size:
                 try:
                     block_in = next(self.source)
 
                 except StopIteration:
-                    if not self.pad or self._available_size == 0: 
+                    if not self.pad or self._available_frame_count == 0: 
                         raise StopIteration 
                     self._pad_count = 0
                     block_in = self._fetch_pad()
                 
-                self.buffer.push(block_in)
-        else:
-            if (self._available_size - self._pad_count) <= 0:
-                raise StopIteration
-            self.buffer.push(self._fetch_pad())
+                self._buffer.push(block_in)
 
-        block_out = self.buffer.read(int(self._offset), self.window_size)
+        # Source is exhausted, so we need to add padding (if `pad` is `True`)
+        else:
+            if (self._available_frame_count - self._pad_count) <= 0:
+                raise StopIteration
+            self._buffer.push(self._fetch_pad())
+
+        # Create `block_out`, move from `hop_size`
+        block_out = self._buffer.read(int(self._offset), self.window_size)
         self._offset += self.hop_size
+
+        # Discard used data
+        if (self._offset > self.archive_size):
+            throw_away = int(self._offset - self.archive_size)
+            self._buffer.shift(throw_away)
+            self._offset -= throw_away
+
         return block_out
 
+    def get_archive(self, block_out_size):
+        if block_out_size > self.archive_size:
+            raise ValueError('cannot get more than `archive_size`')
+        return self._buffer.read(int(self._offset) - block_out_size, block_out_size)
+
     def _fetch_pad(self):
-        missing = numpy.ceil(self.window_size - (self.buffer.size - self._offset))
-        channel_count = self.buffer._blocks[0].shape[1]
+        missing = numpy.ceil(self.window_size - (self._buffer.size - self._offset))
+        channel_count = self._buffer._blocks[0].shape[1]
         pad_block = numpy.zeros(( missing, channel_count ))
         self._pad_count += missing
         return pad_block
 
     @property
-    def _available_size(self):
-        return self.buffer.size - int(self._offset)
+    def _available_frame_count(self):
+        return self._buffer.size - int(self._offset)
 window.next = window.__next__ # Compatibility Python 2
 
 
@@ -225,13 +245,13 @@ class iter(object):
                 start_frame = math.floor(position * config.frame_rate)
                 end_frame = math.floor(self.end * config.frame_rate)
                 yield self.samples[start_frame:end_frame,:]
-        self.buffer = buffering.StreamControl(_source())
+        self._stream = buffering.StreamControl(_source())
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        return self.buffer.pull(config.block_size, pad=self.pad)
+        return self._stream.pull(config.block_size, pad=self.pad)
 iter.next = iter.__next__ # Compatibility Python 2
 
 
