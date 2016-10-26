@@ -3,6 +3,7 @@ import wave
 import struct
 
 from . import pcm
+from . import errors
 
 
 def open_write_mode(f, frame_rate, channel_count):
@@ -17,10 +18,10 @@ def open_read_mode(f):
     try:
         wfile = wave.open(f, mode='rb')
     except wave.Error as err:
-        raise FormatError(err)
+        raise errors.WavFormatError(err)
     sample_width = wfile.getsampwidth()       # Sample width in byte
     if sample_width != 2:
-        raise FormatError('Sample width %s not supported yet' % sample_width)
+        raise errors.WavFormatError('Sample width %s not supported yet' % sample_width)
     return wfile, _get_file_infos(wfile)
 
 
@@ -54,7 +55,7 @@ def write_block(wfile, block):
         wfile.writeframes(pcm.samples_to_string(block))
     except struct.error:
         if wfile.getnframes() * wfile.getsampwidth() >= 2**32:
-            raise WavSizeLimitError
+            raise errors.WavSizeLimitError
         else: raise
 
 
@@ -67,17 +68,3 @@ def _get_file_infos(wfile):
         'duration': wfile.getnframes() / float(frame_rate),
         'bit_depth': wfile.getsampwidth() * 8
     }
-
-
-class FormatError(Exception):
-    """
-    Raised when attempting to read a wave file failed.
-    """
-    pass
-
-
-class WavSizeLimitError(Exception):
-    """
-    Raised when the size limit for wav files has been reached.
-    """
-    pass

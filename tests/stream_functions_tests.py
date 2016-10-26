@@ -9,7 +9,7 @@ import scipy.io.wavfile as sp_wavfile
 from .__init__ import A440_MONO_16B, A440_STEREO_16B, STEPS_MONO_16B
 from pychedelic import stream_functions
 from pychedelic import config
-from pychedelic.core import wav as core_wav
+from pychedelic.core import errors
 
 
 class ramp_test(unittest.TestCase):
@@ -644,7 +644,7 @@ class read_wav_Test(unittest.TestCase):
 
     def read_invalid_wav_test(self):
         # __file__ is obviously not a wav file ...
-        self.assertRaises(core_wav.FormatError, stream_functions.read_wav, __file__)
+        self.assertRaises(errors.WavFormatError, stream_functions.read_wav, __file__)
 
 
 class write_wav_Test(unittest.TestCase):
@@ -727,6 +727,6 @@ class write_wav_Test(unittest.TestCase):
         got_error = False
         try:
             stream_functions.write_wav(source(), temp_file)
-        except core_wav.WavSizeLimitError:
+        except errors.WavSizeLimitError:
             got_error = True 
         self.assertTrue(got_error)

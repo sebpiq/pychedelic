@@ -1,5 +1,7 @@
 import numpy
 
+from . import errors
+
 
 def samples_to_string(samples):
     """
@@ -12,9 +14,13 @@ def samples_to_string(samples):
 
 def string_to_samples(string, channel_count):
     """
-    Takes a byte string of raw PCM data and returns a float32 numpy array containing
+    Takes a byte string of int16 raw PCM data and returns a float32 numpy array containing
     audio samples in range [-1, 1].
     """
+    # check that we have an exact number of frames
+    # % 2 because we have 2 bytes per sample
+    remainder = len(string) % (2 * channel_count)
+    if remainder != 0: raise errors.PcmDecodeError()
     samples = numpy.fromstring(string, dtype='int16')
     samples = int_to_float(samples)
     frame_count = samples.size / channel_count
